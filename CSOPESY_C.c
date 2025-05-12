@@ -32,10 +32,16 @@ int main(){
     printf("Enter command: \n");
     fgets(str, sizeof(str), stdin);
 
-    printf("%s", str);
+    str[strcspn(str, "\n")] = '\0';
 
+    if(strcmp(str, "exit") == 0){
+        printf("Goodbye!");
+        return 0;
+    }
 
-    
+    if(strcmp(str, "clear") == 0){
+        clear();
+    }
     return 0;
 }
 
@@ -78,4 +84,8 @@ void report_util(){
     printf(" command recognized. Doing something");
 }
 
-void clear();
+void clear(){
+
+    printf("\x1b[2J\x1b[H");
+    main();
+}
