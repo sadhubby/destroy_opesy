@@ -23,26 +23,40 @@ void clear();
 void print_color(const char *color, const char *text);
 
 int main(){
-    char str[100];
+
+    char command [100];
     header();
     printf("");
     print_color(green, "Hello! Welcome to PEFE-OS command line!\n");
     print_color(yellow, "Type 'exit' to quite, 'clear' to clear the screen\n");
-
+    
+    while(1){
+    
     printf("Enter command: \n");
-    fgets(str, sizeof(str), stdin);
-
-    str[strcspn(str, "\n")] = '\0';
-
-    if(strcmp(str, "exit") == 0){
-        printf("Goodbye!");
-        return 0;
-    }
-
-    if(strcmp(str, "clear") == 0){
-        clear();
+    fgets(command, sizeof(command), stdin);
+    command[strcspn(command, "\n")] = '\0'; 
+    
+        if (strcmp(command, "exit") == 0) {
+            printf("Goodbye!\n");
+            break;
+        } else if (strcmp(command, "clear") == 0) {
+            clear();
+        } else if (strcmp(command, "initialize") == 0) {
+            initialize();
+        } else if (strcmp(command, "screen") == 0) {
+            screen();
+        } else if (strcmp(command, "scheduler_test") == 0) {
+            scheduler_test();
+        } else if (strcmp(command, "scheduler_stop") == 0) {
+            scheduler_stop();
+        } else if (strcmp(command, "report_util") == 0) {
+            report_util();
+        } else {
+            print_color(yellow, "Unknown command.\n");
+        }
     }
     return 0;
+
 }
 
 void header(){
@@ -65,27 +79,40 @@ void print_color(const char *color, const char *text){
 }
 
 void initialize(){
-    printf(" command recognized. Doing something");
+
+    printf("Initialize command recognized. Doing something\n");
+    
 }
 
 void screen(){
-    printf(" command recognized. Doing something");
+
+    printf("Screen command recognized. Doing something\n");
+
 }
 
 void scheduler_test(){
-    printf(" command recognized. Doing something");
+
+    printf("Scheduler test command recognized. Doing something\n");
+
 }
 
 void scheduler_stop(){
-    printf(" command recognized. Doing something");
+
+    printf("Scheduler stop command recognized. Doing something\n");
+
 }
 
 void report_util(){
-    printf(" command recognized. Doing something");
+
+    printf("Report util command recognized. Doing something\n");  
+
 }
 
 void clear(){
 
     printf("\x1b[2J\x1b[H");
-    main();
+    header();
+    printf("");
+    print_color(green, "Hello! Welcome to PEFE-OS command line!\n");
+    print_color(yellow, "Type 'exit' to quite, 'clear' to clear the screen\n");
 }
