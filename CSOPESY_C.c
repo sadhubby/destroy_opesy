@@ -28,7 +28,7 @@ int main(){
     header();
     printf("");
     print_color(green, "Hello! Welcome to PEFE-OS command line!\n");
-    print_color(yellow, "Type 'exit' to quite, 'clear' to clear the screen\n");
+    print_color(yellow, "Type 'exit' to quit, 'clear' to clear the screen\n");
     
     while(1){
     
@@ -45,11 +45,11 @@ int main(){
             initialize();
         } else if (strcmp(command, "screen") == 0) {
             screen();
-        } else if (strcmp(command, "scheduler_test") == 0) {
+        } else if (strcmp(command, "scheduler-test") == 0) {
             scheduler_test();
-        } else if (strcmp(command, "scheduler_stop") == 0) {
+        } else if (strcmp(command, "scheduler-stop") == 0) {
             scheduler_stop();
-        } else if (strcmp(command, "report_util") == 0) {
+        } else if (strcmp(command, "report-util") == 0) {
             report_util();
         } else {
             print_color(yellow, "Unknown command.\n");
