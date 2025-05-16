@@ -3,14 +3,15 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
+#include <windows.h>
 // #include <threads.h> check documentations how to put this in cuz not work rn  
 
-// Colors use for design
+// colors use for design
 #define yellow "\x1b[33m"
 #define green "\x1b[32m"
 #define reset "\x1b[0m"
 
-// Prototype so as to only see main at top
+// prototype so as to only see main at top
 void header();
 void initialize();
 void screen();
@@ -37,8 +38,8 @@ int main(){
     command[strcspn(command, "\n")] = '\0'; 
     
         if (strcmp(command, "exit") == 0) {
-            printf("Goodbye!\n");
-            break;
+            printf("Exiting...");
+            exit(0);
         } else if (strcmp(command, "clear") == 0) {
             clear();
         } else if (strcmp(command, "initialize") == 0) {
@@ -55,8 +56,8 @@ int main(){
             print_color(yellow, "Unknown command.\n");
         }
     }
+    
     return 0;
-
 }
 
 void header(){
