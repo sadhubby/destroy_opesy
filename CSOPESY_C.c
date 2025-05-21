@@ -3,7 +3,8 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
-#include <windows.h>
+#include <time.h>
+// #include <windows.h>
 // #include <threads.h> check documentations how to put this in cuz not work rn  
 
 // colors use for design
@@ -11,14 +12,32 @@
 #define green "\x1b[32m"
 #define reset "\x1b[0m"
 
+// constants
+#define MAX_SESSIONS 10
+
+// session structure
+typedef struct {
+    char name[50];
+    int current_line;
+    int total_lines;
+    char timestamp[30];
+    bool active;
+} ScreenSession;
+
+ScreenSession sessions[MAX_SESSIONS];
+int session_count = 0;
+
 // prototype so as to only see main at top
 void header();
 void initialize();
-void screen();
+void screen(const char *input);
 void scheduler_test();
 void scheduler_stop();
 void report_util();
 void clear();
+void print_color(const char *color, const char *text);
+void get_current_timestamp(char *buffer, size_t size);
+void draw_session(ScreenSession *session);
 
 // design decision
 void print_color(const char *color, const char *text);
@@ -45,7 +64,11 @@ int main(){
         } else if (strcmp(command, "initialize") == 0) {
             initialize();
         } else if (strcmp(command, "screen") == 0) {
-            screen();
+            print_color(yellow, "Invalid screen command. Usage:\n");
+            print_color(yellow, "  screen -s <name>    (create new screen session)\n");
+            print_color(yellow, "  screen -r <name>    (resume existing screen session)\n");
+        } else if (strncmp(command, "screen -s", 9) == 0 || strncmp(command, "screen -r", 9) == 0) {
+            screen(command);
         } else if (strcmp(command, "scheduler-test") == 0) {
             scheduler_test();
         } else if (strcmp(command, "scheduler-stop") == 0) {
@@ -85,10 +108,79 @@ void initialize(){
     
 }
 
-void screen(){
+void get_current_timestamp(char *buffer, size_t size) {
+    time_t now = time(NULL);
+    struct tm *t = localtime(&now);
+    strftime(buffer, size, "%m/%d/%Y, %I:%M:%S %p", t);
+}
 
-    printf("Screen command recognized. Doing something\n");
+void draw_session(ScreenSession *session) {
+    printf("\nScreen Session Info\n");
+    printf("Process Name: %s\n", session->name);
+    printf("Instruction Line: %d / %d\n", session->current_line, session->total_lines);
+    printf("Timestamp: %s\n", session->timestamp);
 
+    char cmd[100];
+    while (1) {
+        printf("[%s] Enter command: ", session->name);
+        fgets(cmd, sizeof(cmd), stdin);
+        cmd[strcspn(cmd, "\n")] = '\0';
+
+        if (strcmp(cmd, "exit") == 0) {
+            printf("\n");
+            return;
+        } else {
+            char buffer[150];
+            snprintf(buffer, sizeof(buffer), "Command '%s' not recognized inside screen.\n", cmd);
+            print_color(yellow, buffer);
+        }
+    }
+}
+
+void screen(const char *input) {
+    char dash[3], name[50];
+
+        if (sscanf(input, "screen %2s %49s", dash, name) == 2) {
+            if (strcmp(dash, "-s") == 0) {
+            // check for duplicate
+            for (int i = 0; i < session_count; i++) {
+                if (strcmp(sessions[i].name, name) == 0 && sessions[i].active) {
+                    char buffer[150];
+                    snprintf(buffer, sizeof(buffer), "Screen session '%s' already exists. Use -r to resume.\n", name);
+                    print_color(yellow, buffer);                    
+                    return;
+                }
+            }
+
+            if (session_count >= MAX_SESSIONS) {
+                print_color(yellow, "Max session limit reached.\n");
+                return;
+            }
+
+            ScreenSession *new_session = &sessions[session_count++];
+            strcpy(new_session->name, name);
+            new_session->current_line = rand() % 100 + 1;
+            new_session->total_lines = 100;
+            get_current_timestamp(new_session->timestamp, sizeof(new_session->timestamp));
+            new_session->active = true;
+
+            draw_session(new_session);
+        } else if (strcmp(dash, "-r") == 0) {
+            for (int i = 0; i < session_count; i++) {
+                if (strcmp(sessions[i].name, name) == 0 && sessions[i].active) {
+                    draw_session(&sessions[i]);
+                    return;
+                }
+            }
+            char buffer[100];
+            snprintf(buffer, sizeof(buffer), "Session '%s' not found.\n", name);
+            print_color(yellow, buffer);
+        } else {
+            print_color(yellow, "Invalid option. Use -s or -r.\n");
+        }
+    } else {
+        print_color(yellow, "Invalid screen command format.\n");
+    }
 }
 
 void scheduler_test(){
