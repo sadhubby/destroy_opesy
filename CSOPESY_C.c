@@ -52,7 +52,7 @@ int main(){
     
     while(1){
     
-    printf("Enter command: \n");
+    printf("[MAIN MENU] Enter command: \n");
     fgets(command, sizeof(command), stdin);
     command[strcspn(command, "\n")] = '\0'; 
     
