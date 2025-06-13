@@ -27,32 +27,30 @@ typedef struct {
     Process* process;
 } Task;
 
-// Queue
-Process* queue[MAX_PROCESSES];
-int front = 0, rear = 0;
+Process* queue [MAX_PROCESSES];
+int front = 0,rear = 0;
 
-pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t queue_is_not_empty = PTHREAD_COND_INITIALIZER;
+pthread_mutex_t queue_mutex =PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t queue_is_not_empty =PTHREAD_COND_INITIALIZER;
 
 int stop_scheduler = 0;
 
-void enqueue(Process* p) {
+void enqueue(Process* p){
     queue[rear++] = p;
 }
 
-Process* dequeue() {
-    if (front == rear) return NULL;
+Process* dequeue(){
+    if (front ==rear ) return NULL;
     return queue[front++];
 }
 
-// Scheduler Thread
 void* scheduler_thread(void* arg) {
     Task* task_list = (Task*)arg;
-    int task_count = *((int*)&task_list[MAX_PROCESSES]); // count stored at the end
+    int task_count = *((int*)&task_list[MAX_PROCESSES]);
 
-    for (int i = 0; i < task_count; i++) {
+    for (int i = 0 ; i < task_count ; i++) {
         pthread_mutex_lock(&queue_mutex);
-        enqueue(task_list[i].process);
+        enqueue(task_list[i].process) ;
         pthread_cond_signal(&queue_is_not_empty);
         pthread_mutex_unlock(&queue_mutex);
 
@@ -60,7 +58,7 @@ void* scheduler_thread(void* arg) {
     }
 
     pthread_mutex_lock(&queue_mutex);
-    stop_scheduler = 1;
+    stop_scheduler =1;
     pthread_cond_broadcast(&queue_is_not_empty);
     pthread_mutex_unlock(&queue_mutex);
 
@@ -83,7 +81,7 @@ void log_print(Process* process, int core_id){
 }
 
 int main() {
-    int task_count;
+    int task_count ;
     Task task_list[MAX_PROCESSES];
     Process process_list[MAX_PROCESSES];
 
@@ -97,16 +95,16 @@ int main() {
     int core_ids[NUM_CORES];
 
     pthread_t scheduler;
-    pthread_create(&scheduler, NULL, scheduler_thread, task_list);
+    pthread_create(&scheduler,NULL, scheduler_thread, task_list);
     pthread_join(scheduler, NULL);
 
-    for (int i = 0; i < NUM_CORES; i++) {
+    for (int i = 0 ; i < NUM_CORES ; i++) {
         pthread_join(cores[i], NULL);
 
     }
 
     Process* finished[MAX_PROCESSES];
-    for (int i = 0; i < task_count; i++)
-        finished[i] = &process_list[i];
+    for (int i = 0 ; i < task_count ; i++)
+        finished[i] =&process_list[i];
     return 0;
 }
