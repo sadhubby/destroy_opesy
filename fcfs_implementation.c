@@ -19,6 +19,8 @@ typedef struct {
     time_t start_time;
     time_t end_time;
     int core_assigned;
+
+    char filename[64];
 } Process;
 
 typedef struct {
@@ -65,10 +67,31 @@ void* scheduler_thread(void* arg) {
     return NULL;
 }
 
+void log_print(Process* process, int core_id){
+    FILE* fp = fopen(process->filename, "a");
+    if(!fp) return;
+
+    time_t now = time(NULL);
+    struct tm* t = localtime(&now);
+    char timestamp[64];
+    strftime(timestamp, sizeof(timestamp), "%m/%d/%Y %I:%M:%S%p", t);
+
+    fprintf(fp, "(%s) Core:%d \"Hello world from %s!\"\n", timestamp, core_id, process->name);
+    printf("(%s) Core:%d \"Hello world from %s!\"\n", timestamp, core_id, process->name);
+    fclose(fp);
+
+}
+
 int main() {
     int task_count;
     Task task_list[MAX_PROCESSES];
     Process process_list[MAX_PROCESSES];
+
+
+    strcpy(process_list[0].name, "Process_1");
+    strcpy(process_list[0].filename, "process_1.log");
+    log_print(&process_list[0], 1);
+
 
     pthread_t cores[NUM_CORES];
     int core_ids[NUM_CORES];
@@ -79,6 +102,7 @@ int main() {
 
     for (int i = 0; i < NUM_CORES; i++) {
         pthread_join(cores[i], NULL);
+
     }
 
     Process* finished[MAX_PROCESSES];
