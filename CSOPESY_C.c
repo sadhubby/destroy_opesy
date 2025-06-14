@@ -164,12 +164,32 @@ void screen(const char *input) {
                 return;
             }
 
-            ScreenSession *new_session = &sessions[session_count++];
+            ScreenSession *new_session = &sessions[session_count];
             strcpy(new_session->name, name);
-            new_session->current_line = rand() % 100 + 1;
+            new_session->current_line = 0;
             new_session->total_lines = 100;
             get_current_timestamp(new_session->timestamp, sizeof(new_session->timestamp));
             new_session->active = true;
+
+            if (session_count < MAX_PROCESSES) {
+                Process *proc = &process_list[session_count];
+                sprintf(proc->name, "%s", name);
+                sprintf(proc->filename, "%s.log", name);
+                proc->burst_time = BURST_TIME;
+                proc->total_prints = proc->burst_time;
+                proc->finished_print = 0;
+                proc->is_finished = 0;
+                proc->core_assigned = -1;
+                proc->start_time = 0;
+                proc->end_time = 0;
+
+                task_list[session_count].process = proc;
+                session_count++;
+            } else {
+                print_color(yellow, "Maximum number of processes reached.\n");
+                return;
+            }
+
 
             draw_session(new_session);
         } else if (strcmp(dash, "-r") == 0) {

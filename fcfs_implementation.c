@@ -161,9 +161,9 @@ void start_scheduler(){
         pthread_create(&cores[i], NULL, core_worker, &core_ids[i]);
     }
 
-    pthread_join(scheduler, NULL);
+    pthread_detach(scheduler);
     for (int i = 0; i < NUM_CORES; i++) {
-        pthread_join(cores[i], NULL);
+        pthread_detach(cores[i]);
     }
 
     printf("\nScheduler run completed.\n");
