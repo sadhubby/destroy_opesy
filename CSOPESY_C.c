@@ -4,6 +4,9 @@
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
+#include "fcfs_implementation.c"
+
+
 // #include <windows.h>
 // #include <threads.h> check documentations how to put this in cuz not work rn  
 
@@ -38,6 +41,7 @@ void clear();
 void print_color(const char *color, const char *text);
 void get_current_timestamp(char *buffer, size_t size);
 void draw_session(ScreenSession *session);
+void screen_ls();
 
 // design decision
 void print_color(const char *color, const char *text);
@@ -69,13 +73,16 @@ int main(){
             print_color(yellow, "  screen -r <name>    (resume existing screen session)\n");
         } else if (strncmp(command, "screen -s", 9) == 0 || strncmp(command, "screen -r", 9) == 0) {
             screen(command);
-        } else if (strcmp(command, "scheduler-test") == 0) {
+        } else if (strcmp(command, "scheduler -start") == 0) {
             scheduler_test();
-        } else if (strcmp(command, "scheduler-stop") == 0) {
+        } else if (strcmp(command, "scheduler -stop") == 0) {
             scheduler_stop();
         } else if (strcmp(command, "report-util") == 0) {
             report_util();
-        } else {
+        } 
+        else if(strcmp(command, "screen-ls")==0){
+            screen_ls();
+        }else {
             print_color(yellow, "Unknown command.\n");
         }
     }
@@ -185,13 +192,15 @@ void screen(const char *input) {
 
 void scheduler_test(){
 
-    printf("Scheduler test command recognized. Doing something\n");
+    print_color(green, "Starting scheduler...");
+    start_scheduler();
 
 }
 
 void scheduler_stop(){
 
-    printf("Scheduler stop command recognized. Doing something\n");
+    print_color(yellow, "Stopping scheduler...");
+    stop_scheduler_now();
 
 }
 
