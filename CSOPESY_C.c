@@ -4,7 +4,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
-#include "fcfs_implementation.c"
+#include "scheduler.h"
 
 
 // #include <windows.h>
@@ -17,6 +17,9 @@
 
 // constants
 #define MAX_SESSIONS 10
+
+Process process_list[MAX_PROCESSES];
+Task task_list[MAX_PROCESSES];
 
 // session structure
 typedef struct {
@@ -35,6 +38,8 @@ void header();
 void initialize();
 void screen(const char *input);
 void scheduler_test();
+void rr_scheduler_test();
+void rr_scheduler_stop();
 void scheduler_stop();
 void report_util();
 void clear();
@@ -50,8 +55,8 @@ int main(){
 
     char command [100];
     header();
-    printf("");
-    print_color(green, "Hello! Welcome to PEFE-OS command line!\n");
+    //printf("");
+    print_color(green, "\nHello! Welcome to PEFE-OS command line!\n");
     print_color(yellow, "Type 'exit' to quit, 'clear' to clear the screen\n");
     
     while(1){
@@ -75,16 +80,28 @@ int main(){
             screen(command);
         } else if (strcmp(command, "scheduler -start") == 0) {
             scheduler_test();
+        } 
+        else if (strcmp(command, "scheduler -rr -start") == 0) {
+            rr_scheduler_test();
         } else if (strcmp(command, "scheduler -stop") == 0) {
             scheduler_stop();
-        } else if (strcmp(command, "report-util") == 0) {
+        } 
+        else if (strcmp(command, "scheduler -rr -stop") == 0) {
+            rr_scheduler_stop();
+        } 
+        else if (strcmp(command, "report-util") == 0) {
             report_util();
         } 
-        else if(strcmp(command, "screen-ls")==0){
+        else if(strcmp(command, "screen -ls")==0){
             screen_ls();
-        }else {
+        }
+        else if (strcmp(command, "screen -ls-rr") == 0) {
+            rr_screen_ls();
+        }
+        else {
             print_color(yellow, "Unknown command.\n");
         }
+        
     }
     
     return 0;
@@ -217,6 +234,20 @@ void scheduler_test(){
 
 }
 
+void rr_scheduler_test(){
+
+    print_color(green, "Starting scheduler...");
+    start_rr_scheduler();
+
+}
+
+void rr_scheduler_stop(){
+
+    print_color(yellow, "Stopping scheduler...");
+    stop_rr_scheduler_now();
+
+}
+
 void scheduler_stop(){
 
     print_color(yellow, "Stopping scheduler...");
@@ -234,7 +265,7 @@ void clear(){
 
     printf("\x1b[2J\x1b[H");
     header();
-    printf("");
-    print_color(green, "Hello! Welcome to PEFE-OS command line!\n");
+    //printf("");
+    print_color(green, "\nHello! Welcome to PEFE-OS command line!\n");
     print_color(yellow, "Type 'exit' to quite, 'clear' to clear the screen\n");
 }

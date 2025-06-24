@@ -1,6 +1,7 @@
 // gcc fcfs.c -o fcfs -lpthread
 // ./fcfs
 
+#include "scheduler.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,39 +9,12 @@
 #include <unistd.h>
 #include <time.h>
 
-#define MAX_PROCESSES 10
-#define NUM_CORES 4
-#define BURST_TIME 100
-
-int log_to_file = 1;
-
-typedef struct {
-    char name[32];
-    int total_prints;
-    int finished_print;
-
-    time_t start_time;
-    time_t end_time;
-    int core_assigned;
-
-    int burst_time;
-    int is_finished;
-
-    char filename[64];
-} Process;
-
-typedef struct {
-    Process* process;
-} Task;
 
 typedef struct {
     Task task_list[MAX_PROCESSES];
     int task_count;
 } TaskBundle;
 
-
-Process process_list[MAX_PROCESSES]; 
-Task task_list[MAX_PROCESSES]; 
 
 Process* queue [MAX_PROCESSES];
 int front = 0,rear = 0;
@@ -70,8 +44,6 @@ void* scheduler_thread(void* arg) {
         enqueue(task_list[i].process) ;
         pthread_cond_signal(&queue_is_not_empty);
         pthread_mutex_unlock(&queue_mutex);
-
-       // sleep(1);
     }
 
     pthread_mutex_lock(&queue_mutex);
@@ -80,24 +52,6 @@ void* scheduler_thread(void* arg) {
     pthread_mutex_unlock(&queue_mutex);
 
     return NULL;
-}
-
-void log_print(Process* process, int core_id){
-
-    if(!log_to_file) return;
-
-    FILE* fp = fopen(process->filename, "a");
-    if(!fp) return;
-
-    time_t now = time(NULL);
-    struct tm* t = localtime(&now);
-    char timestamp[64];
-    strftime(timestamp, sizeof(timestamp), "%m/%d/%Y %I:%M:%S%p", t);
-
-    fprintf(fp, "(%s) Core:%d \"Hello world from %s!\"\n", timestamp, core_id, process->name);
-    // printf("(%s) Core:%d \"Hello world from %s!\"\n", timestamp, core_id, process->name);
-    fclose(fp);
-
 }
 
 void* core_worker(void* arg) {
@@ -138,7 +92,7 @@ void* core_worker(void* arg) {
 void start_scheduler(){
        for (int i = 0; i < MAX_PROCESSES; i++) {
         sprintf(process_list[i].name, "process_%d", i + 1);
-        sprintf(process_list[i].filename, "process_%d.log", i + 1);
+        sprintf(process_list[i].filename, "process_%d.txt", i + 1);
         process_list[i].burst_time = BURST_TIME;
         process_list[i].total_prints = process_list[i].burst_time;
         process_list[i].finished_print = 0;
