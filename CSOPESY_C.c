@@ -95,10 +95,10 @@ int main(){
         else if(strcmp(command, "screen -ls")==0){
             screen_ls();
             // code for screen_ls with different scheduling algos
-            
-            // if(strcmp(sched.config, "FCFS") == 0) {
+
+            // if(strcmp(sched.config, "fcfs") == 0) {
             //     screen_ls();
-            // } else if(strcmp(sched.config, "RR") == 0) {
+            // } else if(strcmp(sched.config, "rr") == 0) {
             //     rr_screen_ls();
             // } else {
             //     print_color(yellow, "No screen sessions found.\n");
