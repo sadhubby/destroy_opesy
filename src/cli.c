@@ -63,10 +63,12 @@ void runCLI() {
     }
 }
 
+// prints with color
 void printColor(const char *color, const char *text){
     printf("%s%s%s", color, text, reset);
 }
 
+// print ascii header text
 void printHeader(){
 
     FILE *file = fopen("ascii.txt", "r");
@@ -82,6 +84,7 @@ void printHeader(){
 
 }
 
+// print list of developer names
 void printDevelopers() {
     printColor(yellow, "Developers:\n");
     printf("David, Peter\n");
@@ -90,6 +93,7 @@ void printDevelopers() {
     printf("Tano, Fiona\n");
 }
 
+// print list of acceptable commands
 void printCommandList() {
     printColor(yellow, "List of commands:\n");
     printf("help - prints the list of commands\n");
@@ -102,6 +106,7 @@ void printCommandList() {
     printf("report-util - for generating CPU utilization report\n");
 }
 
+// initialize
 void initialize(){
     printf("Initialize command recognized. Doing something\n");
     initialized = true;
