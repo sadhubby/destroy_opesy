@@ -80,11 +80,29 @@ int main(){
             screen(command);
         } else if (strcmp(command, "scheduler -start") == 0) {
             scheduler_test();
+             // code for scheduler -start with different scheduling algos
+
+            // if(strcmp(sched.config, "fcfs") == 0) {
+            //     scheduler_test();
+            // } else if(strcmp(sched.config, "rr") == 0) {
+            //     rr_scheduler_test();
+            // } else {
+            //     print_color(yellow, "No screen sessions found.\n");
+            // }
         } 
         else if (strcmp(command, "scheduler -rr -start") == 0) {
             rr_scheduler_test();
         } else if (strcmp(command, "scheduler -stop") == 0) {
             scheduler_stop();
+            // code for scheduler -stop with different scheduling algos
+
+            // if(strcmp(sched.config, "fcfs") == 0) {
+            //     scheduler_stop();
+            // } else if(strcmp(sched.config, "rr") == 0) {
+            //     rr_scheduler_stop();
+            // } else {
+            //     print_color(yellow, "No screen sessions found.\n");
+            // }
         } 
         else if (strcmp(command, "scheduler -rr -stop") == 0) {
             rr_scheduler_stop();
@@ -104,7 +122,7 @@ int main(){
             //     print_color(yellow, "No screen sessions found.\n");
             // }
         }
-        else if (strcmp(command, "screen -ls-rr") == 0) {
+        else if (strcmp(command, "screen -rr -ls") == 0) {
             rr_screen_ls();
         }
         else {
