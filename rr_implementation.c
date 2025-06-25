@@ -6,6 +6,9 @@
 #include <unistd.h>
 #include <time.h>
 
+void log_print(Process* p, int core_id);
+
+
 pthread_mutex_t rr_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t rr_cond = PTHREAD_COND_INITIALIZER;
 

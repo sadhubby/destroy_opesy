@@ -5,10 +5,11 @@
 #include <stdlib.h>
 #include <time.h>
 #include "scheduler.h"
+#include "config.h"
 
 
 // #include <windows.h>
-// #include <threads.h> check documentations how to put this in cuz not work rn  
+// #include <threads.h> check documentations how to put this in cuz not work rn
 
 // colors use for design
 #define yellow "\x1b[33m"
@@ -54,6 +55,9 @@ void print_color(const char *color, const char *text);
 int main(){
 
     char command [100];
+    bool is_initialized = false;
+
+    printf("\x1b[2J\x1b[H");
     header();
     //printf("");
     print_color(green, "\nHello! Welcome to PEFE-OS command line!\n");
@@ -61,7 +65,7 @@ int main(){
     
     while(1){
     
-    printf("[MAIN MENU] Enter command: \n");
+    printf("[MAIN MENU] Enter command: ");
     fgets(command, sizeof(command), stdin);
     command[strcspn(command, "\n")] = '\0'; 
     
@@ -72,6 +76,9 @@ int main(){
             clear();
         } else if (strcmp(command, "initialize") == 0) {
             initialize();
+            is_initialized = true;
+        } else if (!is_initialized) {
+            print_color(yellow, "You must run 'initialize' first.\n");
         } else if (strcmp(command, "screen") == 0) {
             print_color(yellow, "Invalid screen command. Usage:\n");
             print_color(yellow, "  screen -s <name>    (create new screen session)\n");
@@ -154,9 +161,16 @@ void print_color(const char *color, const char *text){
 }
 
 void initialize(){
-
-    printf("Initialize command recognized. Doing something\n");
+    load_config();
+    print_color(yellow, "Configuration loaded successfully.\n");
     
+    printf("  num-cpu: %d\n", system_config.num_cpu);
+    printf("  scheduler: %s\n", system_config.scheduler);
+    printf("  quantum-cycles: %d\n", system_config.quantum_cycles);
+    printf("  batch-process-freq: %d\n", system_config.batch_process_freq);
+    printf("  min-ins: %d\n", system_config.min_ins);
+    printf("  max-ins: %d\n", system_config.max_ins);
+    printf("  delays-per-exec: %d\n", system_config.delay_per_exec);
 }
 
 void get_current_timestamp(char *buffer, size_t size) {
@@ -294,5 +308,5 @@ void clear(){
     header();
     //printf("");
     print_color(green, "\nHello! Welcome to PEFE-OS command line!\n");
-    print_color(yellow, "Type 'exit' to quite, 'clear' to clear the screen\n");
+    print_color(yellow, "Type 'exit' to quit, 'clear' to clear the screen\n");
 }

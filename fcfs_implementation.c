@@ -9,6 +9,9 @@
 #include <unistd.h>
 #include <time.h>
 
+void log_print(Process* p, int core_id);
+
+
 
 typedef struct {
     Task task_list[MAX_PROCESSES];
@@ -156,4 +159,9 @@ void screen_ls() {
     }
 
     printf("+----------------+------------------------+---------------+------------+\n");
+}
+
+void log_print(Process* p, int core_id) {
+    printf("[CORE %d] Process %s is executing... (%d/%d)\n",
+           core_id, p->name, p->finished_print + 1, p->total_prints);
 }
