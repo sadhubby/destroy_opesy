@@ -22,6 +22,8 @@
 Process process_list[MAX_PROCESSES];
 Task task_list[MAX_PROCESSES];
 
+Process finished_list[MAX_FINISHED_PROCESSES];
+int finished_count = 0;
 // session structure
 typedef struct {
     char name[50];
@@ -72,65 +74,59 @@ int main(){
         if (strcmp(command, "exit") == 0) {
             printf("Exiting...");
             exit(0);
-        } else if (strcmp(command, "clear") == 0) {
+        } 
+        else if (strcmp(command, "clear") == 0) {
             clear();
-        } else if (strcmp(command, "initialize") == 0) {
+        } 
+        else if (strcmp(command, "initialize") == 0) {
             initialize();
             is_initialized = true;
-        } else if (!is_initialized) {
+        } 
+        else if (!is_initialized) {
             print_color(yellow, "You must run 'initialize' first.\n");
-        } else if (strcmp(command, "screen") == 0) {
+        } 
+        else if (strcmp(command, "screen") == 0) {
             print_color(yellow, "Invalid screen command. Usage:\n");
             print_color(yellow, "  screen -s <name>    (create new screen session)\n");
             print_color(yellow, "  screen -r <name>    (resume existing screen session)\n");
-        } else if (strncmp(command, "screen -s", 9) == 0 || strncmp(command, "screen -r", 9) == 0) {
-            screen(command);
-        } else if (strcmp(command, "scheduler -start") == 0) {
-            scheduler_test();
-             // code for scheduler -start with different scheduling algos
-
-            // if(strcmp(sched.config, "fcfs") == 0) {
-            //     scheduler_test();
-            // } else if(strcmp(sched.config, "rr") == 0) {
-            //     rr_scheduler_test();
-            // } else {
-            //     print_color(yellow, "No screen sessions found.\n");
-            // }
         } 
-        else if (strcmp(command, "scheduler -rr -start") == 0) {
-            rr_scheduler_test();
-        } else if (strcmp(command, "scheduler -stop") == 0) {
-            scheduler_stop();
+        else if (strncmp(command, "screen -s", 9) == 0 || strncmp(command, "screen -r", 9) == 0) {
+            screen(command);
+        } 
+        else if (strcmp(command, "scheduler -start") == 0) {
+             // code for scheduler -start with different scheduling algos
+            if(strcmp(system_config.scheduler, "fcfs") == 0) {
+                scheduler_test();
+            } else if(strcmp(system_config.scheduler, "rr") == 0) {
+                rr_scheduler_test();
+            } else {
+                print_color(yellow, "No screen sessions found.\n");
+            }
+        } 
+        else if (strcmp(command, "scheduler -stop") == 0) {
             // code for scheduler -stop with different scheduling algos
 
-            // if(strcmp(sched.config, "fcfs") == 0) {
-            //     scheduler_stop();
-            // } else if(strcmp(sched.config, "rr") == 0) {
-            //     rr_scheduler_stop();
-            // } else {
-            //     print_color(yellow, "No screen sessions found.\n");
-            // }
-        } 
-        else if (strcmp(command, "scheduler -rr -stop") == 0) {
-            rr_scheduler_stop();
+            if(strcmp(system_config.scheduler, "fcfs") == 0) {
+                scheduler_stop();
+            } else if(strcmp(system_config.scheduler, "rr") == 0) {
+                rr_scheduler_stop();
+            } else {
+                print_color(yellow, "No screen sessions found.\n");
+            }
         } 
         else if (strcmp(command, "report-util") == 0) {
             report_util();
         } 
         else if(strcmp(command, "screen -ls")==0){
-            screen_ls();
             // code for screen_ls with different scheduling algos
 
-            // if(strcmp(sched.config, "fcfs") == 0) {
-            //     screen_ls();
-            // } else if(strcmp(sched.config, "rr") == 0) {
-            //     rr_screen_ls();
-            // } else {
-            //     print_color(yellow, "No screen sessions found.\n");
-            // }
-        }
-        else if (strcmp(command, "screen -rr -ls") == 0) {
-            rr_screen_ls();
+            if(strcmp(system_config.scheduler, "fcfs") == 0) {
+                screen_ls();
+            } else if(strcmp(system_config.scheduler, "rr") == 0) {
+                rr_screen_ls();
+            } else {
+                print_color(yellow, "No screen sessions found.\n");
+            }
         }
         else {
             print_color(yellow, "Unknown command.\n");

@@ -7,6 +7,7 @@
 #define NUM_CORES 4
 #define BURST_TIME 100
 #define TIME_QUANTUM 10
+#define MAX_FINISHED_PROCESSES (MAX_PROCESSES * 10)
 
 typedef struct{
 
@@ -31,7 +32,8 @@ typedef struct{
 
 extern Process process_list [MAX_PROCESSES];
 extern Task task_list[MAX_PROCESSES];
-
+extern Process finished_list[MAX_FINISHED_PROCESSES];
+extern int finished_count;
 void start_scheduler(void);
 void stop_scheduler_now(void);
 void start_rr_scheduler(void);
