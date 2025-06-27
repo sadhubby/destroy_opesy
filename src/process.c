@@ -3,6 +3,7 @@
 #include <time.h>
 #include "process.h"
 
+// constructor
 Process *create_process(const char *name, int pid, int total_prints, time_t start_time) {
     Process *p = malloc(sizeof(Process));
     if (!p) return NULL;
@@ -18,6 +19,8 @@ Process *create_process(const char *name, int pid, int total_prints, time_t star
     return p;
 }
 
+
+// destructor
 void destroy_process(Process *p) {
     free(p);
 }

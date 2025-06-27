@@ -13,11 +13,7 @@ typedef struct{
     time_t start_time;
     time_t end_time;
     int core_assigned;
-
-    int burst_time;
     int is_finished;
-
-    char filename[64];
 
 } Process;
 
