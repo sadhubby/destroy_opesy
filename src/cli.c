@@ -2,12 +2,12 @@
 #include <string.h>
 #include <stdbool.h>
 #include "cli.h"
-//#include "config.h" - to be added
+#include "config.h"
 
 // global variables
 static bool initialized = false;
 static bool running = true;
-// static Config config; - when config is ready
+static Config config;
 
 // colors used for design
 #define yellow "\x1b[33m"
@@ -54,7 +54,6 @@ void runCLI() {
         // not initialized
         else if (!initialized) {
             printColor(yellow, "You must run 'initialize' first.\n");
-            continue;
         }
         // unknown command
         else {
@@ -108,6 +107,15 @@ void printCommandList() {
 
 // initialize
 void initialize(){
-    printf("Initialize command recognized. Doing something\n");
+    load_config(&config);
+    printColor(yellow, "Configuration loaded successfully.\n");
+    
+    printf("  num-cpu: %d\n", config.num_cpu);
+    printf("  scheduler: %s\n", config.scheduler);
+    printf("  quantum-cycles: %d\n", config.quantum_cycles);
+    printf("  batch-process-freq: %d\n", config.batch_process_freq);
+    printf("  min-ins: %d\n", config.min_ins);
+    printf("  max-ins: %d\n", config.max_ins);
+    printf("  delays-per-exec: %d\n", config.delay_per_exec);
     initialized = true;
 }

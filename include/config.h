@@ -13,6 +13,6 @@ typedef struct {
 
 extern Config system_config;
 
-void load_config();
+int load_config(Config *config);
 
 #endif
