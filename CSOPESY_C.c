@@ -6,6 +6,8 @@
 #include <time.h>
 #include "scheduler.h"
 #include "config.h"
+#include "report_util.c"
+#include "barebones.c"
 
 
 // #include <windows.h>
@@ -104,7 +106,7 @@ int main(){
             }
         } 
         else if (strcmp(command, "scheduler -stop") == 0) {
-            // code for scheduler -stop with different scheduling algos
+
 
             if(strcmp(system_config.scheduler, "fcfs") == 0) {
                 scheduler_stop();
@@ -187,14 +189,23 @@ void draw_session(ScreenSession *session) {
         fgets(cmd, sizeof(cmd), stdin);
         cmd[strcspn(cmd, "\n")] = '\0';
 
-        if (strcmp(cmd, "exit") == 0) {
+        if (strcmp(cmd, "process-smi") == 0) {
+            printf(">> Running sample instructions for %s\n", session->name);
+            barebones("DECLARE(x, 5)");
+            barebones("ADD(sum, x, x)");
+            barebones("PRINT(\"Value from: \"+sum)");
+            barebones("SLEEP(500)");
+            barebones("FOR([PRINT(\"Looping\"), ADD(sum, sum, x)], 2)");
+            barebones("FOR([PRINT(\"NEST1\"), FOR([PRINT(\"NEST2\"), ADD(sum, sum, x)], 2)], 2)");
+        } else if (strcmp(cmd, "exit") == 0) {
             printf("\n");
             return;
-        } else {
+        } else { 
             char buffer[150];
             snprintf(buffer, sizeof(buffer), "Command '%s' not recognized inside screen.\n", cmd);
             print_color(yellow, buffer);
         }
+
     }
 }
 
@@ -292,11 +303,50 @@ void scheduler_stop(){
 
 }
 
-void report_util(){
+void report_util() {
+    // Terminal UI header
+    printf("------------------------------------------------------------\n");
+    printf("\nCPU Utilization Report\n");
+    printf("Cores Used: %d / %d\n", system_config.num_cpu, system_config.num_cpu);
+    printf("\nRunning processes:\n");
 
-    printf("Report util command recognized. Doing something\n");  
+    for (int i = 0; i < MAX_PROCESSES; i++) {
+        Process *p = &process_list[i];
+        if (p->burst_time == 0) continue;
+        if (p->core_assigned == -1 || p->is_finished) continue;
 
+        char timestamp[64] = "-";
+        if (p->start_time != 0) {
+            struct tm *t = localtime(&p->start_time);
+            strftime(timestamp, sizeof(timestamp), "%m/%d/%Y %I:%M:%S%p", t);
+        }
+
+        printf("%-10s ( %-22s )  Core %-2d  %4d / %-6d \n",
+               p->name, timestamp, p->core_assigned,
+               p->finished_print, p->burst_time);
+    }
+
+    printf("\nFinished processes:\n");
+
+    for (int i = 0; i < finished_count; i++) {
+        Process *p = &finished_list[i];
+        char timestamp[64] = "-";
+        if (p->end_time != 0) {
+            struct tm *t = localtime(&p->end_time);
+            strftime(timestamp, sizeof(timestamp), "%m/%d/%Y %I:%M:%S%p", t);
+        }
+
+        printf("%-10s ( %-22s )  Finished   %4d / %-6d \n",
+               p->name, timestamp, p->finished_print, p->burst_time);
+    }
+
+    printf("------------------------------------------------------------\n");
+
+    // File write
+    write_report_to_file("csopesy-log.txt");
+    printf(">> Report generated at csopesy-log.txt!\n");
 }
+
 
 void clear(){
 
