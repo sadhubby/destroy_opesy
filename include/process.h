@@ -1,4 +1,4 @@
-#include <ctime>
+#include <time.h>
 
 #ifndef PROCESS_H
 #define PROCESS_H
@@ -6,6 +6,7 @@
 typedef struct{
 
     char name[32];
+    int pid;
     int total_prints;
     int finished_print;
 

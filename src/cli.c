@@ -29,7 +29,7 @@ void runCLI() {
     printColor(green, "\nHello! Welcome to PEFE-OS command line!\n\n");
     printDevelopers();
     printf("\n");
-    printCommandList();
+    printf("Type 'help' for a list of commands.\n");
     printf("\n");
 
     while (running) {

@@ -1,5 +1,0 @@
-hello opesy peeps, dito natin ilalagay ang final (clean) code:
-
-LEGEND:
-main - main loop
-cli - command parsing
