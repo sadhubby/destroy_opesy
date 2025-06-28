@@ -178,36 +178,74 @@ void get_current_timestamp(char *buffer, size_t size) {
 }
 
 void draw_session(ScreenSession *session) {
-    printf("\nScreen Session Info\n");
-    printf("Process Name: %s\n", session->name);
-    printf("Instruction Line: %d / %d\n", session->current_line, session->total_lines);
-    printf("Timestamp: %s\n", session->timestamp);
+    printf("\x1b[2J\x1b[H");
+
+    Process *proc = NULL;
+    for (int i = 0; i < MAX_PROCESSES; i++) {
+        if (strcmp(process_list[i].name, session->name) == 0) {
+            proc = &process_list[i];
+            break;
+        }
+    }
+
+    if (!proc) {
+        print_color(yellow, "Process not found.\n");
+        return;
+    }
 
     char cmd[100];
     while (1) {
+        if (proc->is_finished) {
+            session->active = false;
+            printf("\nProcess %s has finished.\n", session->name);
+            return;
+        }
+
         printf("[%s] Enter command: ", session->name);
         fgets(cmd, sizeof(cmd), stdin);
         cmd[strcspn(cmd, "\n")] = '\0';
 
         if (strcmp(cmd, "process-smi") == 0) {
-            printf(">> Running sample instructions for %s\n", session->name);
-            barebones("DECLARE(x, 5)");
-            barebones("ADD(sum, x, x)");
-            barebones("PRINT(\"Value from: \"+sum)");
-            barebones("SLEEP(500)");
-            barebones("FOR([PRINT(\"Looping\"), ADD(sum, sum, x)], 2)");
-            barebones("FOR([PRINT(\"NEST1\"), FOR([PRINT(\"NEST2\"), ADD(sum, sum, x)], 2)], 2)");
+            printf("\nProcess name: %s\n", session->name);
+            printf("ID: %d\n", (int)(proc - process_list) + 1);
+            printf("Logs:\n");
+
+            for (int i = 0; i < 2; i++) {
+                time_t now = time(NULL);
+                struct tm *t = localtime(&now);
+                char timestamp[32];
+                strftime(timestamp, sizeof(timestamp), "(%m/%d/%Y %I:%M:%S%p)", t);
+                printf("%s Core:%d \"Hello world from %s!\"\n", timestamp,
+                    proc->core_assigned == -1 ? 0 : proc->core_assigned,
+                    session->name);
+            }
+
+            session->current_line += rand() % 25 + 1;
+            if (session->current_line > session->total_lines)
+                session->current_line = session->total_lines;
+
+            printf("\nCurrent instruction line: %d\n", session->current_line);
+            printf("Lines of code: %d\n", session->total_lines);
+
+            if (proc->is_finished || proc->finished_print >= proc->burst_time) {
+                session->active = false;
+                proc->is_finished = 1;
+                printf("\nFinished!\n");
+                return;
+            }
+
         } else if (strcmp(cmd, "exit") == 0) {
             printf("\n");
             return;
-        } else { 
+        } else {
             char buffer[150];
             snprintf(buffer, sizeof(buffer), "Command '%s' not recognized inside screen.\n", cmd);
             print_color(yellow, buffer);
         }
-
     }
 }
+
+
 
 void screen(const char *input) {
     char dash[3], name[50];
@@ -219,7 +257,7 @@ void screen(const char *input) {
                 if (strcmp(sessions[i].name, name) == 0 && sessions[i].active) {
                     char buffer[150];
                     snprintf(buffer, sizeof(buffer), "Screen session '%s' already exists. Use -r to resume.\n", name);
-                    print_color(yellow, buffer);                    
+                    print_color(yellow, buffer);
                     return;
                 }
             }
@@ -259,7 +297,13 @@ void screen(const char *input) {
             draw_session(new_session);
         } else if (strcmp(dash, "-r") == 0) {
             for (int i = 0; i < session_count; i++) {
-                if (strcmp(sessions[i].name, name) == 0 && sessions[i].active) {
+                if (strcmp(sessions[i].name, name) == 0) {
+                    if (!sessions[i].active || process_list[i].is_finished) {
+                        char msg[100];
+                        snprintf(msg, sizeof(msg), "Process %s not found.\n", name);
+                        print_color(yellow, msg);
+                        return;
+                    }
                     draw_session(&sessions[i]);
                     return;
                 }
