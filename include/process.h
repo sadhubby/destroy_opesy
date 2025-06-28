@@ -1,4 +1,5 @@
 #include <time.h>
+#include "instruction.h"
 
 #ifndef PROCESS_H
 #define PROCESS_H
@@ -10,14 +11,7 @@ typedef struct{
     int total_prints;
     int finished_print;
     int is_finished;
-
-    struct {
-        time_t timestamp;
-        int core_id;
-        char message[128];
-    } logs[100];
-
-    int log_count;
+    Instruction *instructions;
 
 } Process;
 
