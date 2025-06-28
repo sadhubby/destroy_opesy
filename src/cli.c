@@ -53,8 +53,8 @@ void runCLI() {
             initialize();
         }
         // initialize
-        else if (strcmp(command, "screen") == 0) {
-            printf("screen\n");
+        else if (strncmp(command, "screen -s ", 10) == 0) {
+            screen_start(command + 10);
         }
         // scheduler-start
         else if (strcmp(command, "scheduler-start") == 0) {
