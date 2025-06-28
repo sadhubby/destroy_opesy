@@ -10,12 +10,12 @@ static int next_pid = 1;
 #define green "\x1b[32m"
 #define reset "\x1b[0m"
 
-void print_color(const char *color, const char *text);
+void printColor(const char *color, const char *text);
 
 void screen_start(const char *name) {
     // check for count
     if (process_count >= MAX_PROCESSES) {
-        print_color(yellow, "Max session limit reached.\n");
+        printColor(yellow, "Max session limit reached.\n");
         return;
     }
 
@@ -24,21 +24,22 @@ void screen_start(const char *name) {
         if (strcmp(process_table[i]->name, name) == 0) {
             char buffer[150];
             snprintf(buffer, sizeof(buffer), "Screen session '%s' already exists. Use -r to resume.\n", name);
-            print_color(yellow, buffer);                    
+            printColor(yellow, buffer);                    
             return;
         }
     }
 
     // create a new process and add to table
     Process *p = create_process(name, next_pid++);
-    process_table[process_count++] = p;
 
+    // print new process
     printf("Attached to new screen: %s (PID: %d)\n", p->name, p->pid);
     printf("Type 'exit' to return to main menu.\n");
 
+    // accept inputs
     char input[64];
     while (1) {
-        printf("[%s]> ", p->name);
+        printf("[%s] Enter command: ", p->name);
         fgets(input, sizeof(input), stdin);
         input[strcspn(input, "\n")] = '\0';
 
@@ -46,10 +47,9 @@ void screen_start(const char *name) {
             printf("Returning to main menu.\n");
             return;
         } else if (strcmp(input, "process-smi") == 0) {
-            printf("Process: %s | PID: %d | Running: %d | Finished: %d\n",
-                   p->name, p->pid, p->is_running, p->is_finished);
+            
         } else {
-            printf("Unknown command inside screen.\n");
+            printColor(yellow, "Invalid screen command format.\n");
         }
     }
 }

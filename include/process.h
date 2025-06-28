@@ -5,7 +5,7 @@
 
 typedef struct{
 
-    char name[32];
+    char name[50];
     int pid;
     int total_prints;
     int finished_print;

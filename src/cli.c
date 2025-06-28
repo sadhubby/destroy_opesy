@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include "cli.h"
 #include "config.h"
+#include "screen.h"
 
 // global variables
 static bool initialized = false;
@@ -50,6 +51,22 @@ void runCLI() {
         // initialize
         else if (strcmp(command, "initialize") == 0) {
             initialize();
+        }
+        // initialize
+        else if (strcmp(command, "screen") == 0) {
+            printf("screen\n");
+        }
+        // scheduler-start
+        else if (strcmp(command, "scheduler-start") == 0) {
+            printf("scheduler-start\n");
+        }
+        // scheduler-stop
+        else if (strcmp(command, "scheduler-stop") == 0) {
+            printf("scheduler-stop\n");
+        }
+        // report-util
+        else if (strcmp(command, "report-util") == 0) {
+            printf("report-util\n");
         }
         // not initialized
         else if (!initialized) {
