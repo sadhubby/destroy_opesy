@@ -13,8 +13,6 @@ Process *create_process(const char *name, int pid) {
     p->total_prints = 1;
     p->finished_print = 0;
     p->is_finished = 0;
-    p->start_time = time(NULL);
-    p->core_assigned = -1;
 
     return p;
 }

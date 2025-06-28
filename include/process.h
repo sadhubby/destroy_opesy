@@ -9,11 +9,15 @@ typedef struct{
     int pid;
     int total_prints;
     int finished_print;
-
-    time_t start_time;
-    time_t end_time;
-    int core_assigned;
     int is_finished;
+
+    struct {
+        time_t timestamp;
+        int core_id;
+        char message[128];
+    } logs[100];
+
+    int log_count;
 
 } Process;
 

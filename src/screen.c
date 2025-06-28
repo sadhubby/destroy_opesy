@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 #include "screen.h"
 
 static Process *process_table[MAX_PROCESSES];
@@ -12,6 +13,22 @@ static int next_pid = 1;
 
 void printColor(const char *color, const char *text);
 
+// print timestamp
+void print_timestamp(time_t raw_time) {
+    struct tm *timeinfo = localtime(&raw_time);
+    char buffer[64];
+    strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", timeinfo);
+    printf("%s", buffer);
+}
+
+// process-smi
+void process_smi(Process *p) {
+    printf("\nProcess name: %s\n", p->name);
+    printf("ID: %d\n", p->pid);
+    printf("Logs:\n");
+}
+
+// screen -s
 void screen_start(const char *name) {
     // check for count
     if (process_count >= MAX_PROCESSES) {
@@ -47,7 +64,7 @@ void screen_start(const char *name) {
             printf("Returning to main menu.\n");
             return;
         } else if (strcmp(input, "process-smi") == 0) {
-            
+            process_smi(p);
         } else {
             printColor(yellow, "Invalid screen command format.\n");
         }
