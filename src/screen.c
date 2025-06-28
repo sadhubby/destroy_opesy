@@ -1,0 +1,81 @@
+#include <stdio.h>
+#include <string.h>
+#include "screen.h"
+
+static Process *process_table[MAX_PROCESSES];
+static int process_count = 0;
+static int next_pid = 1;
+
+#define yellow "\x1b[33m"
+#define green "\x1b[32m"
+#define reset "\x1b[0m"
+
+void print_color(const char *color, const char *text);
+
+void screen_start(const char *name) {
+    // check for count
+    if (process_count >= MAX_PROCESSES) {
+        print_color(yellow, "Max session limit reached.\n");
+        return;
+    }
+
+    // check for duplicate
+    for (int i = 0; i < process_count; i++) {
+        if (strcmp(process_table[i]->name, name) == 0) {
+            char buffer[150];
+            snprintf(buffer, sizeof(buffer), "Screen session '%s' already exists. Use -r to resume.\n", name);
+            print_color(yellow, buffer);                    
+            return;
+        }
+    }
+
+    // create a new process and add to table
+    Process *p = create_process(name, next_pid++);
+    process_table[process_count++] = p;
+
+    printf("Attached to new screen: %s (PID: %d)\n", p->name, p->pid);
+    printf("Type 'exit' to return to main menu.\n");
+
+    char input[64];
+    while (1) {
+        printf("[%s]> ", p->name);
+        fgets(input, sizeof(input), stdin);
+        input[strcspn(input, "\n")] = '\0';
+
+        if (strcmp(input, "exit") == 0) {
+            printf("Returning to main menu.\n");
+            return;
+        } else if (strcmp(input, "process-smi") == 0) {
+            printf("Process: %s | PID: %d | Running: %d | Finished: %d\n",
+                   p->name, p->pid, p->is_running, p->is_finished);
+        } else {
+            printf("Unknown command inside screen.\n");
+        }
+    }
+}
+
+void screen_resume(const char *name) {
+    for (int i = 0; i < process_count; ++i) {
+        if (strcmp(process_table[i]->name, name) == 0) {
+            if (process_table[i]->is_finished) {
+                printf("Process %s has finished.\n", name);
+                return;
+            }
+
+            printf("Re-attached to process %s\n", name);
+            screen_start(name); // reuse screen_start logic
+            return;
+        }
+    }
+
+    printf("Process %s not found.\n", name);
+}
+
+void screen_list() {
+    printf("Active processes:\n");
+    for (int i = 0; i < process_count; ++i) {
+        printf("- %s (PID: %d) [%s]\n", process_table[i]->name,
+               process_table[i]->pid,
+               process_table[i]->is_finished ? "Finished" : "Running");
+    }
+}
