@@ -3,7 +3,7 @@
 
 #include <time.h>
 
-#define MAX_PROCESSES 10
+#define MAX_PROCESSES 64
 #define NUM_CORES 4
 #define BURST_TIME 100
 #define TIME_QUANTUM 10
@@ -21,6 +21,8 @@ typedef struct{
 
     int burst_time;
     int is_finished;
+
+    char instructions[256000];
 
     char filename[64];
 

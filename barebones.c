@@ -36,6 +36,101 @@ char* trim(char* str) {
     return str;
 }
 
+// void barebones(const char *instr) {
+//     char safe_instr[512];
+//     strncpy(safe_instr, instr, sizeof(safe_instr)-1);
+//     safe_instr[sizeof(safe_instr)-1] = '\0';
+//     instr = trim(safe_instr);
+
+//     if (strncmp(instr, "DECLARE(", 8) == 0) {
+//         char var[32]; int val;
+//         sscanf(instr, "DECLARE(%[^,], %d)", var, &val);
+//         *get_var(trim(var)) = val;
+
+//     } else if (strncmp(instr, "ADD(", 4) == 0) {
+//         char var1[32], var2[32], var3[32];
+//         if (sscanf(instr, "ADD(%31[^,], %31[^,], %31[^)])", var1, var2, var3) == 3) {
+//             unsigned short *res = get_var(trim(var1));
+//             unsigned short *op1 = get_var(trim(var2));
+//             unsigned short *op2 = get_var(trim(var3));
+//             *res = *op1 + *op2;
+//         } else {
+//             printf(">> ADD parsing error: %s\n", instr);
+//         }
+
+//     } else if (strncmp(instr, "SUBTRACT(", 9) == 0) {
+//         char var1[32], var2[32], var3[32];
+//         if (sscanf(instr, "SUBTRACT(%31[^,], %31[^,], %31[^)])", var1, var2, var3) == 3) {
+//             unsigned short *res = get_var(trim(var1));
+//             unsigned short *op1 = get_var(trim(var2));
+//             unsigned short *op2 = get_var(trim(var3));
+//             *res = *op1 - *op2;
+//         } else {
+//             printf(">> SUBTRACT parsing error: %s\n", instr);
+//         }
+
+//     } else if (strncmp(instr, "PRINT(", 6) == 0) {
+//         char msg[256], var[32];
+//         if (strstr(instr, "+")) {
+//             if (sscanf(instr, "PRINT(\"%[^\"]\"+%31[^)])", msg, var) == 2)
+//                 printf(">> %s%d\n", msg, *get_var(trim(var)));
+//             else
+//                 printf(">> PRINT parsing error: %s\n", instr);
+//         } else {
+//             if (sscanf(instr, "PRINT(\"%[^\"]\")", msg) == 1)
+//                 printf(">> %s\n", msg);
+//             else
+//                 printf(">> PRINT parsing error: %s\n", instr);
+//         }
+
+//     } else if (strncmp(instr, "SLEEP(", 6) == 0) {
+//         int ticks;
+//         if (sscanf(instr, "SLEEP(%d)", &ticks) == 1)
+//             usleep(ticks * 1000);
+//         else
+//             printf(">> SLEEP parsing error: %s\n", instr);
+
+//     } else if (strncmp(instr, "FOR([", 5) == 0) {
+//         const char *start = strchr(instr, '[') + 1;
+//         const char *end = strrchr(instr, ']');
+//         if (!start || !end || end <= start) {
+//             printf(">> FOR instruction syntax error: %s\n", instr);
+//             return;
+//         }
+//         char loop_body[512] = {0};
+//         strncpy(loop_body, start, end-start);
+//         loop_body[end-start] = '\0';
+
+//         // Extract repeats
+//         int repeats=1;
+//         if (sscanf(end+2, "%d", &repeats) != 1) {
+//             printf(">> FOR repeat parsing error: %s\n", instr);
+//             return;
+//         }
+
+//         // Split instructions carefully
+//         char *tokens[MAX_INSTRUCTIONS];
+//         int t=0, depth=0;
+//         tokens[t++] = loop_body;
+//         for (int i=0; loop_body[i]; i++) {
+//             if (loop_body[i] == '[') depth++;
+//             else if (loop_body[i] == ']') depth--;
+//             else if (loop_body[i]==',' && depth==0) {
+//                 loop_body[i]='\0';
+//                 if (t < MAX_INSTRUCTIONS) tokens[t++] = &loop_body[i+1];
+//             }
+//         }
+
+//         for (int r=0; r<repeats; r++) {
+//             for (int i=0; i<t; i++) {
+//                 barebones(trim(tokens[i]));
+//             }
+//         }
+
+//     } else {
+//         printf(">> Unknown instruction: %s\n", instr);
+//     }
+// }
 void barebones(const char *instr) {
     char safe_instr[512];
     strncpy(safe_instr, instr, sizeof(safe_instr)-1);
@@ -46,6 +141,7 @@ void barebones(const char *instr) {
         char var[32]; int val;
         sscanf(instr, "DECLARE(%[^,], %d)", var, &val);
         *get_var(trim(var)) = val;
+        // printf(">> DECLARE %s = %d\n", trim(var), val);
 
     } else if (strncmp(instr, "ADD(", 4) == 0) {
         char var1[32], var2[32], var3[32];
@@ -54,8 +150,9 @@ void barebones(const char *instr) {
             unsigned short *op1 = get_var(trim(var2));
             unsigned short *op2 = get_var(trim(var3));
             *res = *op1 + *op2;
+            // printf(">> ADD %s = %d + %d -> %d\n", trim(var1), *op1, *op2, *res);
         } else {
-            printf(">> ADD parsing error: %s\n", instr);
+            // printf(">> ADD parsing error: %s\n", instr);
         }
 
     } else if (strncmp(instr, "SUBTRACT(", 9) == 0) {
@@ -65,50 +162,53 @@ void barebones(const char *instr) {
             unsigned short *op1 = get_var(trim(var2));
             unsigned short *op2 = get_var(trim(var3));
             *res = *op1 - *op2;
+            // printf(">> SUBTRACT %s = %d - %d -> %d\n", trim(var1), *op1, *op2, *res);
         } else {
-            printf(">> SUBTRACT parsing error: %s\n", instr);
+            // printf(">> SUBTRACT parsing error: %s\n", instr);
         }
 
     } else if (strncmp(instr, "PRINT(", 6) == 0) {
         char msg[256], var[32];
         if (strstr(instr, "+")) {
-            if (sscanf(instr, "PRINT(\"%[^\"]\"+%31[^)])", msg, var) == 2)
-                printf(">> %s%d\n", msg, *get_var(trim(var)));
-            else
-                printf(">> PRINT parsing error: %s\n", instr);
+            // if (sscanf(instr, "PRINT(\"%[^\"]\"+%31[^)])", msg, var) == 2)
+            //     // printf(">> %s%d\n", msg, *get_var(trim(var)));
+            // else{}
+            //     printf(">> PRINT parsing error: %s\n", instr);
         } else {
-            if (sscanf(instr, "PRINT(\"%[^\"]\")", msg) == 1)
-                printf(">> %s\n", msg);
-            else
-                printf(">> PRINT parsing error: %s\n", instr);
+            // if (sscanf(instr, "PRINT(\"%[^\"]\")", msg) == 1)
+            //     printf(">> %s\n", msg);
+            // else
+            //     printf(">> PRINT parsing error: %s\n", instr);
         }
 
     } else if (strncmp(instr, "SLEEP(", 6) == 0) {
         int ticks;
-        if (sscanf(instr, "SLEEP(%d)", &ticks) == 1)
+        if (sscanf(instr, "SLEEP(%d)", &ticks) == 1) {
+            // printf(">> SLEEP for %d ticks\n", ticks);
             usleep(ticks * 1000);
-        else
-            printf(">> SLEEP parsing error: %s\n", instr);
+        } 
+        // else
+            // printf(">> SLEEP parsing error: %s\n", instr);
 
     } else if (strncmp(instr, "FOR([", 5) == 0) {
         const char *start = strchr(instr, '[') + 1;
         const char *end = strrchr(instr, ']');
         if (!start || !end || end <= start) {
-            printf(">> FOR instruction syntax error: %s\n", instr);
+            // printf(">> FOR instruction syntax error: %s\n", instr);
             return;
         }
-        char loop_body[512] = {0};
-        strncpy(loop_body, start, end-start);
-        loop_body[end-start] = '\0';
+        char loop_body[1024] = {0};
+        size_t body_len = end - start;
+        if (body_len >= sizeof(loop_body)) body_len = sizeof(loop_body) - 1;
+        strncpy(loop_body, start, body_len);
+        loop_body[body_len] = '\0';
 
-        // Extract repeats
         int repeats=1;
         if (sscanf(end+2, "%d", &repeats) != 1) {
-            printf(">> FOR repeat parsing error: %s\n", instr);
+            // printf(">> FOR repeat parsing error: %s\n", instr);
             return;
         }
 
-        // Split instructions carefully
         char *tokens[MAX_INSTRUCTIONS];
         int t=0, depth=0;
         tokens[t++] = loop_body;
@@ -116,18 +216,20 @@ void barebones(const char *instr) {
             if (loop_body[i] == '[') depth++;
             else if (loop_body[i] == ']') depth--;
             else if (loop_body[i]==',' && depth==0) {
-                loop_body[i]='\0';
-                if (t < MAX_INSTRUCTIONS) tokens[t++] = &loop_body[i+1];
-            }
+            loop_body[i]='\0';
+            if (t+1 < MAX_INSTRUCTIONS) tokens[t++] = &loop_body[i+1];
         }
+    }
 
+        // printf(">> FOR loop: %d repeats, %d instructions\n", repeats, t);
         for (int r=0; r<repeats; r++) {
+            // printf(">> FOR iteration %d/%d\n", r+1, repeats);
             for (int i=0; i<t; i++) {
                 barebones(trim(tokens[i]));
             }
         }
 
     } else {
-        printf(">> Unknown instruction: %s\n", instr);
+        // printf(">> Unknown instruction: %s\n", instr);
     }
 }

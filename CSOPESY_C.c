@@ -6,8 +6,8 @@
 #include <time.h>
 #include "scheduler.h"
 #include "config.h"
-#include "report_util.c"
-#include "barebones.c"
+#include "report_util.h"
+#include "barebones.h"
 
 
 // #include <windows.h>

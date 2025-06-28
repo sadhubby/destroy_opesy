@@ -1,6 +1,11 @@
 {
     "files.associations": {
+<<<<<<< Updated upstream
         "*.dbclient-js": "javascript",
         "stdio.h": "c"
+=======
+        "unistd.h": "c",
+        "cstdlib": "c"
+>>>>>>> Stashed changes
     }
 }

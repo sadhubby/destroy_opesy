@@ -17,8 +17,8 @@ int get_random_burst(int min, int max) {
 }
 
 int find_free_process_slot(void) {
-      for (int i = 0; i < MAX_PROCESSES; i++) {
-        if (process_list[i].is_finished || process_list[i].burst_time == 0)
+    for (int i = 0; i < MAX_PROCESSES; i++) {
+        if (process_list[i].burst_time == 0)
             return i;
     }
     return -1;
