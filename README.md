@@ -1,9 +1,11 @@
-# destroy_opesy
+# destroy\_opesy
+
 David, Peter
 De Guzman, Evan
 Soriano, Erizha
 Tano, Fiona
 
-Entry file: CSOPESY_C.exe
+Entry file: CSOPESY\_C.c
 
-To run, enter "gcc CSOPESY_C.c fcfs_scheduler.c rr_scheduler.c config.c scheduler_utils.c report_util.c -o csopesy -lpthread" on the command line.
+To run, enter "gcc \*.c -o csopesy -lpthread" then "csopesy" on the command line.
+
