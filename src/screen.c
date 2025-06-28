@@ -72,27 +72,9 @@ void screen_start(const char *name) {
 }
 
 void screen_resume(const char *name) {
-    for (int i = 0; i < process_count; ++i) {
-        if (strcmp(process_table[i]->name, name) == 0) {
-            if (process_table[i]->is_finished) {
-                printf("Process %s has finished.\n", name);
-                return;
-            }
-
-            printf("Re-attached to process %s\n", name);
-            screen_start(name); // reuse screen_start logic
-            return;
-        }
-    }
-
-    printf("Process %s not found.\n", name);
+    
 }
 
 void screen_list() {
-    printf("Active processes:\n");
-    for (int i = 0; i < process_count; ++i) {
-        printf("- %s (PID: %d) [%s]\n", process_table[i]->name,
-               process_table[i]->pid,
-               process_table[i]->is_finished ? "Finished" : "Running");
-    }
+    
 }
