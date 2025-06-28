@@ -1,6 +1,8 @@
 #include "scheduler_utils.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+
 
 void create_process(Process *proc, int idx, int burst) {
     proc->burst_time = burst;
@@ -10,6 +12,9 @@ void create_process(Process *proc, int idx, int burst) {
     proc->core_assigned = -1;
     proc->start_time = 0;
     proc->end_time = 0;
+
+    proc->log_count = 0;
+    memset(proc->logs, 0, sizeof(proc->logs));
 }
 
 int get_random_burst(int min, int max) {
@@ -17,7 +22,7 @@ int get_random_burst(int min, int max) {
 }
 
 int find_free_process_slot(void) {
-      for (int i = 0; i < MAX_PROCESSES; i++) {
+    for (int i = 0; i < MAX_PROCESSES; i++) {
         if (process_list[i].is_finished || process_list[i].burst_time == 0)
             return i;
     }

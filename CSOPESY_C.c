@@ -192,6 +192,11 @@ void draw_session(ScreenSession *session) {
         return;
     }
 
+    printf("Screen Session Info\n");
+    printf("Process Name: %s\n", session->name);
+    printf("Current Line: %d / %d\n", session->current_line, session->total_lines);
+    printf("Timestamp: %s\n", session->timestamp);
+
     char cmd[100];
     while (1) {
         if (proc->is_finished) {
@@ -200,23 +205,34 @@ void draw_session(ScreenSession *session) {
             return;
         }
 
-        printf("[%s] Enter command: ", session->name);
+        printf("%s:\\> ", session->name);
         fgets(cmd, sizeof(cmd), stdin);
         cmd[strcspn(cmd, "\n")] = '\0';
 
         if (strcmp(cmd, "process-smi") == 0) {
-            printf("\nProcess name: %s\n", session->name);
-            printf("ID: %d\n", (int)(proc - process_list) + 1);
-            printf("Logs:\n");
 
-            for (int i = 0; i < 2; i++) {
+            // Add new log
+            if (proc->log_count < MAX_LOGS) {
                 time_t now = time(NULL);
                 struct tm *t = localtime(&now);
                 char timestamp[32];
                 strftime(timestamp, sizeof(timestamp), "(%m/%d/%Y %I:%M:%S%p)", t);
-                printf("%s Core:%d \"Hello world from %s!\"\n", timestamp,
+
+                snprintf(proc->logs[proc->log_count], LOG_LENGTH,
+                    "%s Core:%d \"Hello world from %s!\"",
+                    timestamp,
                     proc->core_assigned == -1 ? 0 : proc->core_assigned,
                     session->name);
+
+                proc->log_count++;
+            }
+
+            // Display process info
+            printf("\nProcess name: %s\n", session->name);
+            printf("ID: %d\n", (int)(proc - process_list) + 1);
+            printf("Logs:\n");
+            for (int i = 0; i < proc->log_count; i++) {
+                printf("%s\n", proc->logs[i]);
             }
 
             session->current_line += rand() % 25 + 1;
@@ -243,6 +259,7 @@ void draw_session(ScreenSession *session) {
         }
     }
 }
+
 
 
 

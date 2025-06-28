@@ -8,6 +8,8 @@
 #define BURST_TIME 100
 #define TIME_QUANTUM 10
 #define MAX_FINISHED_PROCESSES (MAX_PROCESSES * 10)
+#define MAX_LOGS 1024
+#define LOG_LENGTH 128
 
 typedef struct{
 
@@ -23,6 +25,9 @@ typedef struct{
     int is_finished;
 
     char filename[64];
+
+    char logs[MAX_LOGS][LOG_LENGTH];
+    int log_count;
 
 } Process;
 
