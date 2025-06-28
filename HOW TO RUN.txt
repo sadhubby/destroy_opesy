@@ -1,1 +1,1 @@
-gcc -Iinclude -o os_emulator src/main.c src/cli.c src/config.c
+gcc -Iinclude -o os_emulator src/*.c
