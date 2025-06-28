@@ -1,1 +1,1 @@
-gcc -Iinclude -o os_emulator src/*.c
+gcc CSOPESY_C.c fcfs_scheduler.c rr_scheduler.c config.c scheduler_utils.c report_util.c -o csopesy -lpthread
