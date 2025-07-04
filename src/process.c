@@ -1,4 +1,6 @@
 #include "process.h"
+#include <stdio.h>
+#include <string.h>
 
 // retain in uint16 bounds
 #define CLAMP_UINT16(x) ((x) > 65535 ? 65535 : (x))

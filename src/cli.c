@@ -4,6 +4,7 @@
 #include "cli.h"
 #include "config.h"
 #include "screen.h"
+#include "scheduler.h"
 
 // global variables
 static bool initialized = false;
@@ -70,11 +71,11 @@ void runCLI() {
         }
         // scheduler-start
         else if (strcmp(command, "scheduler-start") == 0) {
-            printf("scheduler-start\n");
+            start_scheduler();
         }
         // scheduler-stop
         else if (strcmp(command, "scheduler-stop") == 0) {
-            printf("scheduler-stop\n");
+            stop_scheduler();
         }
         // report-util
         else if (strcmp(command, "report-util") == 0) {

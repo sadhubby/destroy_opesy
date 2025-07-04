@@ -2,9 +2,12 @@
 #define SCHEDULER_H
 
 #include <stdint.h>
+#include <windows.h>
 
 extern uint64_t CPU_TICKS;
 
-void tick();
+DWORD WINAPI scheduler_loop(LPVOID lpParam);
+void start_scheduler();
+void stop_scheduler();
 
 #endif
