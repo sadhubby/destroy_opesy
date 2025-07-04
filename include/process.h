@@ -6,6 +6,7 @@
 
 #define MAX_PROCESS_NAME 50
 
+// track states of the different processes
 typedef enum {
     READY,
     RUNNING,
@@ -13,11 +14,13 @@ typedef enum {
     FINISHED
 } ProcessState;
 
+// variables
 typedef struct {
     char name[MAX_PROCESS_NAME];
     uint16_t value;
 } Variable;
 
+// type of instruction (for is segmented)
 typedef enum {
     DECLARE,
     ADD,
@@ -28,6 +31,7 @@ typedef enum {
     FOR_END
 } InstructionType;
 
+// defining instructions, args are inside of parentheses, value for constants/sleep, repeat count for for loop
 typedef struct {
     InstructionType type;
     char arg1[50];
@@ -37,6 +41,7 @@ typedef struct {
     uint8_t repeat_count; 
 } Instruction;
 
+// for logs in screen
 typedef struct {
     char message[50];
     int tick;
@@ -62,10 +67,12 @@ typedef struct{
     int start;
     int end;
 
-    bool is_in_scren;
+    bool is_in_screen;
 
 } Process;
 
-Process *create_process(const char *name, int pid);
+Variable *get_variable(Process *p, const char *name);
+uint16_t resolve_value(Process *p, const char *arg, uint16_t fallback);
+void execute_instruction(Process *p);
 
 #endif
