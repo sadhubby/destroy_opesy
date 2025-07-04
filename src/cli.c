@@ -56,9 +56,17 @@ void runCLI() {
         else if (!initialized) {
             printColor(yellow, "You must run 'initialize' first.\n");
         }
-        // initialize
+        // screen -s
         else if (strncmp(command, "screen -s ", 10) == 0) {
             screen_start(command + 10);
+        }
+        // screen -r
+        else if (strncmp(command, "screen -r ", 10) == 0) {
+            screen_resume(command + 10);
+        }
+        // screen -ls
+        else if (strcmp(command, "screen -ls") == 0) {
+            screen_list();
         }
         // scheduler-start
         else if (strcmp(command, "scheduler-start") == 0) {
