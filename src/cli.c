@@ -52,6 +52,10 @@ void runCLI() {
         else if (strcmp(command, "initialize") == 0) {
             initialize();
         }
+        // not initialized
+        else if (!initialized) {
+            printColor(yellow, "You must run 'initialize' first.\n");
+        }
         // initialize
         else if (strncmp(command, "screen -s ", 10) == 0) {
             screen_start(command + 10);
@@ -67,10 +71,6 @@ void runCLI() {
         // report-util
         else if (strcmp(command, "report-util") == 0) {
             printf("report-util\n");
-        }
-        // not initialized
-        else if (!initialized) {
-            printColor(yellow, "You must run 'initialize' first.\n");
         }
         // unknown command
         else {

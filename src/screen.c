@@ -47,28 +47,28 @@ void screen_start(const char *name) {
     }
 
     // create a new process and add to table
-    Process *p = create_process(name, next_pid++);
+    // Process *p = create_process(name, next_pid++);
 
-    // print new process
-    printf("Attached to new screen: %s (PID: %d)\n", p->name, p->pid);
-    printf("Type 'exit' to return to main menu.\n");
+    // // print new process
+    // printf("Attached to new screen: %s (PID: %d)\n", p->name, p->pid);
+    // printf("Type 'exit' to return to main menu.\n");
 
-    // accept inputs
-    char input[64];
-    while (1) {
-        printf("[%s] Enter command: ", p->name);
-        fgets(input, sizeof(input), stdin);
-        input[strcspn(input, "\n")] = '\0';
+    // // accept inputs
+    // char input[64];
+    // while (1) {
+    //     printf("[%s] Enter command: ", p->name);
+    //     fgets(input, sizeof(input), stdin);
+    //     input[strcspn(input, "\n")] = '\0';
 
-        if (strcmp(input, "exit") == 0) {
-            printf("Returning to main menu.\n");
-            return;
-        } else if (strcmp(input, "process-smi") == 0) {
-            process_smi(p);
-        } else {
-            printColor(yellow, "Invalid screen command format.\n");
-        }
-    }
+    //     if (strcmp(input, "exit") == 0) {
+    //         printf("Returning to main menu.\n");
+    //         return;
+    //     } else if (strcmp(input, "process-smi") == 0) {
+    //         process_smi(p);
+    //     } else {
+    //         printColor(yellow, "Invalid screen command format.\n");
+    //     }
+    // }
 }
 
 void screen_resume(const char *name) {

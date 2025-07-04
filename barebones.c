@@ -13,6 +13,8 @@ typedef struct {
 } Variable;
 
 static Variable vars[MAX_VARIABLES];
+strcpy(vars[0].name, "x");
+vars[0].value = 0;
 static int var_count = 0;
 
 unsigned short* get_var(const char* name) {
