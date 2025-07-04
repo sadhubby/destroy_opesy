@@ -26,3 +26,10 @@ void stop_scheduler() {
     WaitForSingleObject(scheduler_thread, INFINITE);
     CloseHandle(scheduler_thread);
 }
+
+void busy_wait_ticks(uint32_t delay_ticks) {
+    uint64_t target_tick = CPU_TICKS + delay_ticks;
+    while (CPU_TICKS < target_tick) {
+        // to add more code here
+    }
+}
