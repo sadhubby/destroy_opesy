@@ -1,4 +1,5 @@
 #include "process.h"
+#include "scheduler.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -96,7 +97,17 @@ void execute_instruction(Process *p) {
 
             inst = &ctx->sub_instructions[ctx->current_index];
             execute_instruction(p);
+            break;
         }
+        // sleep
+        case SLEEP: {
+            // sleep for x ticks
+            p->state = SLEEPING;
+            p->sleep_until_tick = CPU_TICKS + inst->value;
+            p->program_counter++;
+            return; 
+        }
+
     }
 
     // if in for loop, move index in for loop
@@ -108,3 +119,6 @@ void execute_instruction(Process *p) {
 
     return;
 }
+
+Process process_table[MAX_PROCESSES];
+int num_processes = 0;

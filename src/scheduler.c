@@ -1,6 +1,7 @@
 #include <windows.h>
 #include <stdio.h>
 #include "scheduler.h"
+#include "process.h"
 
 uint64_t CPU_TICKS = 0;
 volatile int scheduler_running = 0;
@@ -9,7 +10,17 @@ HANDLE scheduler_thread;
 DWORD WINAPI scheduler_loop(LPVOID lpParam) {
     while (scheduler_running) {
         CPU_TICKS++;
+
+        // wake up sleeping processes
+        for (int i = 0; i < num_processes; i++) {
+            Process *p = &(process_table[i]);
+            if (p->state == SLEEPING && CPU_TICKS >= p->sleep_until_tick) {
+                p->state = READY;
+            }
+        }
+
         // to add all d scheduler logic
+        // assign ready and run running processes
     }
     return 0;
 }

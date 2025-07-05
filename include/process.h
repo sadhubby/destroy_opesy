@@ -6,6 +6,7 @@
 
 #define MAX_PROCESS_NAME 50
 #define MAX_LOOP_DEPTH 3
+#define MAX_PROCESSES 128
 
 // track states of the different processes
 typedef enum {
@@ -28,8 +29,7 @@ typedef enum {
     SUBTRACT,
     PRINT,
     SLEEP,
-    FOR_START,
-    FOR_END
+    FOR
 } InstructionType;
 
 // defining instructions, args are inside of parentheses, value for constants/sleep, repeat count for for loop
@@ -90,5 +90,8 @@ typedef struct{
 Variable *get_variable(Process *p, const char *name);
 uint16_t resolve_value(Process *p, const char *arg, uint16_t fallback);
 void execute_instruction(Process *p);
+
+extern Process process_table[];
+extern int num_processes;
 
 #endif
