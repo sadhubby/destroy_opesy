@@ -5,6 +5,7 @@
 #include <stdbool.h>
 
 #define MAX_PROCESS_NAME 50
+#define MAX_LOOP_DEPTH 3
 
 // track states of the different processes
 typedef enum {
@@ -39,6 +40,9 @@ typedef struct {
     char arg3[50];
     uint16_t value;
     uint8_t repeat_count; 
+
+    struct Instruction *sub_instructions;
+    int sub_instruction_count;
 } Instruction;
 
 // for logs in screen
@@ -46,6 +50,15 @@ typedef struct {
     char message[50];
     int tick;
 } Log;
+
+// contents of a for loop
+typedef struct {
+    int repeat_count;
+    int remaining;
+    int current_index;
+    Instruction *sub_instructions;
+    int sub_instruction_count;
+} ForContext;
 
 typedef struct{
 
@@ -68,6 +81,9 @@ typedef struct{
     int end;
 
     bool is_in_screen;
+
+    ForContext for_stack[MAX_LOOP_DEPTH];
+    int for_depth;
 
 } Process;
 
