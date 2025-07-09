@@ -106,4 +106,6 @@ extern Process **process_table;
 extern uint32_t num_processes;
 extern uint32_t process_table_size;
 
+Process *generate_dummy_process(uint32_t freq);
+
 #endif

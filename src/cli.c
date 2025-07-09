@@ -73,6 +73,11 @@ void runCLI() {
         }
         // scheduler-start
         else if (strcmp(command, "scheduler-start") == 0) {
+            Process *dummy = generate_dummy_process(config.batch_process_freq);
+            add_process(dummy);
+            init_ready_queue();
+            enqueue_ready(dummy);
+            printf("Dummy process generated and added to scheduler.\n");
             start_scheduler();
         }
         // scheduler-stop
@@ -82,10 +87,6 @@ void runCLI() {
         // report-util
         else if (strcmp(command, "report-util") == 0) {
             printf("report-util\n");
-        }
-        // test-instructions
-        else if (strcmp(command, "test-instructions") == 0) {
-            test_instructions();
         }
         // unknown command
         else {
@@ -150,50 +151,4 @@ void initialize(){
     printf("  max-ins: %d\n", config.max_ins);
     printf("  delays-per-exec: %d\n", config.delay_per_exec);
     initialized = true;
-}
-
-// just to test when instructions work
-void test_instructions() {
-    printf("This is a DEBUG command!\n");
-
-    FILE *f = fopen("instructions.txt", "r");
-    char filebuf[2048] = {0};
-    size_t len = fread(filebuf, 1, sizeof(filebuf) - 1, f);
-    fclose(f);
-    filebuf[len] = '\0';
-
-    // Remove newlines and extra whitespace
-    char *src = filebuf, *dst = filebuf;
-    while (*src) {
-        if (*src != '\n' && *src != '\r') {
-            *dst++ = *src;
-        }
-        src++;
-    }
-    *dst = '\0';
-
-    // Parse instructions
-    Instruction instructions[32];
-    int num_inst = parse_instruction_list(filebuf, instructions, 32);
-
-    // Setup process
-    Process p;
-    memset(&p, 0, sizeof(Process));
-    strcpy(p.name, "test_proc");
-    Variable variables[32];
-    p.instructions = instructions;
-    p.variables = variables;
-    p.num_inst = num_inst;
-    p.num_var = 0;
-    p.program_counter = 0;
-
-    // Execute all instructions with debug output
-    while (p.program_counter < p.num_inst) {
-        printf("Executing instruction %d: type=%d\n", p.program_counter, p.instructions[p.program_counter].type);
-        execute_instruction(&p);
-        printf("Variables after instruction %d:\n", p.program_counter - 1);
-        for (int i = 0; i < p.num_var; i++) {
-            printf("  %s = %u\n", p.variables[i].name, p.variables[i].value);
-        }
-    }
 }

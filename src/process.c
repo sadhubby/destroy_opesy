@@ -321,3 +321,25 @@ int parse_instruction_list(const char *instrs, Instruction *out, int max_count) 
 
     return count;
 }
+
+// Generate a dummy process for testing or batch creation
+Process *generate_dummy_process(uint32_t freq) {
+    static int dummy_pid = 1000;
+    Process *p = (Process *)calloc(1, sizeof(Process));
+    snprintf(p->name, MAX_PROCESS_NAME, "dummy_proc_%d", dummy_pid);
+    p->pid = dummy_pid++;
+    p->state = READY;
+    p->program_counter = 0;
+    p->num_var = 0;
+    p->num_inst = 2;
+    p->variables = (Variable *)calloc(8, sizeof(Variable));
+    p->instructions = (Instruction *)calloc(2, sizeof(Instruction));
+
+    // DECLARE(x, freq); PRINT("Dummy x: " + x)
+    char declare_args[64];
+    snprintf(declare_args, sizeof(declare_args), "x,%u", freq);
+    p->instructions[0] = parse_declare(declare_args);
+    strcpy(p->instructions[1].arg1, "x");
+    p->instructions[1].type = PRINT;
+    return p;
+}
