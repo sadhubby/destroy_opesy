@@ -2,21 +2,38 @@
 #include "scheduler.h"
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
+#include <stdlib.h>
 
 // retain in uint16 bounds
 #define CLAMP_UINT16(x) ((x) > 65535 ? 65535 : (x))
 
 // get variable given a process and a variable name
 Variable *get_variable(Process *p, const char *name) {
+    char trimmed_name[MAX_PROCESS_NAME];
+    strncpy(trimmed_name, name, MAX_PROCESS_NAME - 1);
+    trimmed_name[MAX_PROCESS_NAME - 1] = '\0';
+    // Remove ALL whitespace (not just leading/trailing)
+    trim(trimmed_name);
+    // Remove any leading/trailing whitespace again (defensive)
+    int i = 0, j = 0;
+    while (trimmed_name[i]) {
+        if (!isspace((unsigned char)trimmed_name[i])) {
+            trimmed_name[j++] = trimmed_name[i];
+        }
+        i++;
+    }
+    trimmed_name[j] = '\0';
+
     // iterate through each variable
     for (int i = 0; i < p->num_var; i++) {
-        if (strcmp(p->variables[i].name, name) == 0) {
+        if (strcmp(p->variables[i].name, trimmed_name) == 0) {
             return &p->variables[i];
         }
     }
 
     // otherwise assign new variable with a value of 0
-    strcpy(p->variables[p->num_var].name, name);
+    strcpy(p->variables[p->num_var].name, trimmed_name);
     p->variables[p->num_var].value = 0;
     return &p->variables[p->num_var++];
 }
@@ -86,14 +103,12 @@ void execute_instruction(Process *p) {
         
         // for
         case FOR: {
-            // create a new context
             ForContext *ctx = &p->for_stack[p->for_depth++];
             ctx->repeat_count = inst->repeat_count;
             ctx->remaining = inst->repeat_count - 1;
             ctx->current_index = 0;
             ctx->sub_instructions = inst->sub_instructions;
             ctx->sub_instruction_count = inst->sub_instruction_count;
-
             inst = &ctx->sub_instructions[ctx->current_index];
             execute_instruction(p);
             break;
@@ -130,4 +145,179 @@ void add_process(Process *p) {
     }
 
     process_table[num_processes++] = p;
+}
+
+// trim whitepsace
+void trim(char *str) {
+    char *end;
+
+    while (isspace((unsigned char)*str))
+        str++;
+
+    if (*str == 0)
+        return;
+
+    end = str + strlen(str) - 1;
+
+    while (end > str && isspace((unsigned char)*end))
+        end--;
+        
+    *(end+1) = 0;
+}
+
+// DECLARE(var, value)
+Instruction parse_declare(const char *args) {
+    Instruction inst = {0};
+    inst.type = DECLARE;
+    char var[50];
+    int value;
+    sscanf(args, "%49[^,],%d", var, &value);
+    trim(var);
+    strcpy(inst.arg1, var);
+    inst.value = value;
+    return inst;
+}
+
+// ADD(var1, var2/value, var3/value)
+Instruction parse_add_sub(const char *args, int is_add) {
+    Instruction inst = {0};
+    inst.type = is_add ? ADD : SUBTRACT;
+    char var1[50], var2[50], var3[50];
+    int v2, v3;
+    int n2, n3;
+    n2 = n3 = 0;
+    sscanf(args, "%49[^,],%49[^,],%49[^,]", var1, var2, var3);
+    trim(var1); trim(var2); trim(var3);
+    strcpy(inst.arg1, var1);
+
+    // Parse as raw int first
+    if (sscanf(var2, "%d", &v2) == 1) {
+        inst.arg2[0] = '\0';
+        inst.value = v2;
+    } // parse as variable
+    else {
+        strcpy(inst.arg2, var2);
+    }
+    if (sscanf(var3, "%d", &v3) == 1) {
+        inst.arg3[0] = '\0';
+        inst.value = v3;
+    } else {
+        strcpy(inst.arg3, var3);
+    }
+    return inst;
+}
+
+// PRINT("msg" + var)
+Instruction parse_print(const char *args) {
+    Instruction inst = {0};
+    inst.type = PRINT;
+
+    // Extract the variable
+    const char *plus = strchr(args, '+');
+    if (plus) {
+        strcpy(inst.arg1, plus + 1);
+        trim(inst.arg1);
+    } else {
+        inst.arg1[0] = '\0';
+    }
+    return inst;
+}
+
+// SLEEP(X)
+Instruction parse_sleep(const char *args) {
+    Instruction inst = {0};
+    inst.type = SLEEP;
+    int ticks = 0;
+    sscanf(args, "%d", &ticks);
+    inst.value = ticks;
+    return inst;
+}
+
+int parse_instruction_list(const char *instrs, Instruction *out, int max_count);
+
+// FOR([instructions], repeats)
+Instruction parse_for(const char *args) {
+    Instruction inst = {0};
+    inst.type = FOR;
+
+    // Find brackets
+    const char *lbracket = strchr(args, '[');
+    const char *rbracket = strchr(args, ']');
+
+    // check for missing or malformed brackets
+    if (!lbracket || !rbracket || rbracket <= lbracket) {
+        return inst;
+    }
+
+    // Copy instruction list substring safely
+    size_t instr_len = rbracket - lbracket - 1;
+    char instr_list[256];
+    if (instr_len >= sizeof(instr_list)) instr_len = sizeof(instr_list) - 1;
+    strncpy(instr_list, lbracket + 1, instr_len);
+    instr_list[instr_len] = '\0';
+
+    // Parse repeat count
+    int repeats = 1;
+    const char *repeat_ptr = rbracket + 1;
+    while (*repeat_ptr && (isspace((unsigned char)*repeat_ptr) || *repeat_ptr == ',')) repeat_ptr++;
+    if (sscanf(repeat_ptr, "%d", &repeats) == 1) {
+        inst.repeat_count = repeats;
+    } else {
+        inst.repeat_count = 1;
+    }
+    int count = 0;
+
+    // Count how many instructions there are
+    char instr_list_copy[256];
+    strncpy(instr_list_copy, instr_list, sizeof(instr_list_copy));
+    instr_list_copy[sizeof(instr_list_copy)-1] = '\0';
+    char *token = strtok(instr_list_copy, ";");
+
+    while (token) {
+        count++;
+        token = strtok(NULL, ";");
+    }
+
+    if (count == 0)
+        return inst;
+
+    Instruction *sub_instructions = malloc(sizeof(Instruction) * count);
+    int actual_count = parse_instruction_list(instr_list, sub_instructions, count);
+    inst.sub_instructions = sub_instructions;
+    inst.sub_instruction_count = actual_count;
+
+    return inst;
+}
+
+// parse list of instructions
+int parse_instruction_list(const char *instrs, Instruction *out, int max_count) {
+    char buf[256];
+    strncpy(buf, instrs, sizeof(buf));
+    buf[sizeof(buf)-1] = '\0';
+
+    int count = 0;
+    char *token = strtok(buf, ";");
+    while (token && count < max_count) {
+        char cmd[20], args[200];
+
+        if (sscanf(token, "%19[^ (](%199[^)])", cmd, args) == 2) {
+            if (strcmp(cmd, "DECLARE") == 0) {
+                out[count++] = parse_declare(args);
+            } else if (strcmp(cmd, "ADD") == 0) {
+                out[count++] = parse_add_sub(args, 1);
+            } else if (strcmp(cmd, "SUBTRACT") == 0) {
+                out[count++] = parse_add_sub(args, 0);
+            } else if (strcmp(cmd, "PRINT") == 0) {
+                out[count++] = parse_print(args);
+            } else if (strcmp(cmd, "SLEEP") == 0) {
+                out[count++] = parse_sleep(args);
+            } else if (strcmp(cmd, "FOR") == 0) {
+                out[count++] = parse_for(args);
+            }
+        }
+        
+        token = strtok(NULL, ";");
+    }
+
+    return count;
 }

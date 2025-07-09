@@ -93,6 +93,15 @@ uint16_t resolve_value(Process *p, const char *arg, uint16_t fallback);
 void execute_instruction(Process *p);
 void add_process(Process *p);
 
+void trim(char *str);
+Instruction parse_declare(const char *args);
+Instruction parse_add_sub(const char *args, int is_add);
+Instruction parse_print(const char *args);
+Instruction parse_sleep(const char *args);
+
+int parse_instruction_list(const char *instrs, Instruction *out, int max_count);
+Instruction parse_for(const char *args);
+
 extern Process **process_table;
 extern uint32_t num_processes;
 extern uint32_t process_table_size;

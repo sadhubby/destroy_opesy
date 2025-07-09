@@ -156,68 +156,35 @@ void initialize(){
 void test_instructions() {
     printf("This is a DEBUG command!\n");
 
-    // make new process p
+    FILE *f = fopen("instructions.txt", "r");
+    char filebuf[2048] = {0};
+    size_t len = fread(filebuf, 1, sizeof(filebuf) - 1, f);
+    fclose(f);
+    filebuf[len] = '\0';
+
+    // Remove newlines and extra whitespace
+    char *src = filebuf, *dst = filebuf;
+    while (*src) {
+        if (*src != '\n' && *src != '\r') {
+            *dst++ = *src;
+        }
+        src++;
+    }
+    *dst = '\0';
+
+    // Parse instructions
+    Instruction instructions[32];
+    int num_inst = parse_instruction_list(filebuf, instructions, 32);
+
+    // Setup process
     Process p;
     memset(&p, 0, sizeof(Process));
     strcpy(p.name, "test_proc");
-
-    // set instructions and variables
-    Instruction instructions[10];
-    Variable variables[10];
+    Variable variables[32];
     p.instructions = instructions;
     p.variables = variables;
-    p.num_inst = 5;
+    p.num_inst = num_inst;
     p.num_var = 0;
-
-    // DECLARE x = 10
-    p.instructions[0].type = DECLARE;
-    strcpy(p.instructions[0].arg1, "x");
-    p.instructions[0].value = 10;
-
-    // DECLARE y = 5
-    p.instructions[1].type = DECLARE;
-    strcpy(p.instructions[1].arg1, "y");
-    p.instructions[1].value = 5;
-
-    // ADD z = x + y
-    p.instructions[2].type = ADD;
-    strcpy(p.instructions[2].arg1, "z");
-    strcpy(p.instructions[2].arg2, "x");
-    strcpy(p.instructions[2].arg3, "y");
-
-    // SUBTRACT w = z - y
-    p.instructions[3].type = SUBTRACT;
-    strcpy(p.instructions[3].arg1, "w");
-    strcpy(p.instructions[3].arg2, "z");
-    strcpy(p.instructions[3].arg3, "y");
-
-    // PRINT w
-    p.instructions[4].type = PRINT;
-    strcpy(p.instructions[4].arg1, "w");
-
-    // SLEEP for 2 ticks
-    p.instructions[5].type = SLEEP;
-    p.instructions[5].value = 2;
-
-    // FOR loop: repeat 3 times { ADD x = x + x; PRINT x; }
-    Instruction for_sub[2];
-    for_sub[0].type = ADD;
-    strcpy(for_sub[0].arg1, "x");
-    strcpy(for_sub[0].arg2, "x");
-    strcpy(for_sub[0].arg3, "x");
-    for_sub[1].type = PRINT;
-    strcpy(for_sub[1].arg1, "x");
-
-    p.instructions[6].type = FOR;
-    p.instructions[6].repeat_count = 3;
-    p.instructions[6].sub_instructions = for_sub;
-    p.instructions[6].sub_instruction_count = 2;
-
-    // PRINT x after the loop
-    p.instructions[7].type = PRINT;
-    strcpy(p.instructions[7].arg1, "x");
-
-    p.num_inst = 8;
     p.program_counter = 0;
 
     // Execute all instructions with debug output

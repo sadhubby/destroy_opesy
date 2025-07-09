@@ -1,0 +1,8 @@
+DECLARE(x, 10);
+DECLARE(y, 5);
+ADD(z, x, y);
+SUBTRACT(w, z, y);
+PRINT("Value of w: " + w);
+SLEEP(2);
+FOR([ADD(x, x, y); PRINT("Loop x: " + x)], 3);
+PRINT("Final x: " + x)
