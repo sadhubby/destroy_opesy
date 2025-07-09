@@ -120,5 +120,15 @@ void execute_instruction(Process *p) {
     return;
 }
 
-Process process_table[MAX_PROCESSES];
-int num_processes = 0;
+Process **process_table = NULL;
+uint32_t num_processes = 0;
+uint32_t process_table_size = 0;
+
+void add_process(Process *p) {
+    if (num_processes >= process_table_size) {
+        process_table_size = process_table_size == 0 ? 8 : process_table_size * 2;
+        process_table = realloc(process_table, process_table_size * sizeof(Process *));
+    }
+
+    process_table[num_processes++] = p;
+}

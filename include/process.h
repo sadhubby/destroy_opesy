@@ -6,7 +6,6 @@
 
 #define MAX_PROCESS_NAME 50
 #define MAX_LOOP_DEPTH 3
-#define MAX_PROCESSES 128
 
 // track states of the different processes
 typedef enum {
@@ -90,8 +89,10 @@ typedef struct{
 Variable *get_variable(Process *p, const char *name);
 uint16_t resolve_value(Process *p, const char *arg, uint16_t fallback);
 void execute_instruction(Process *p);
+void add_process(Process *p);
 
-extern Process process_table[];
-extern int num_processes;
+extern Process **process_table;
+extern uint32_t num_processes;
+extern uint32_t process_table_size;
 
 #endif
