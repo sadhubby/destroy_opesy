@@ -31,8 +31,10 @@ typedef enum {
     FOR
 } InstructionType;
 
+typedef struct Instruction Instruction;
+
 // defining instructions, args are inside of parentheses, value for constants/sleep, repeat count for for loop
-typedef struct {
+typedef struct Instruction {
     InstructionType type;
     char arg1[50];
     char arg2[50];

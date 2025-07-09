@@ -3,7 +3,7 @@
 #include <time.h>
 #include "screen.h"
 
-static Process *process_table[MAX_PROCESSES];
+// static Process *process_table[MAX_PROCESSES];
 static int process_count = 0;
 static int next_pid = 1;
 
@@ -38,12 +38,12 @@ void screen_start(const char *name) {
 
     // check for duplicate
     for (int i = 0; i < process_count; i++) {
-        if (strcmp(process_table[i]->name, name) == 0) {
-            char buffer[150];
-            snprintf(buffer, sizeof(buffer), "Screen session '%s' already exists. Use -r to resume.\n", name);
-            printColor(yellow, buffer);                    
-            return;
-        }
+        // if (strcmp(process_table[i]->name, name) == 0) {
+        //     char buffer[150];
+        //     snprintf(buffer, sizeof(buffer), "Screen session '%s' already exists. Use -r to resume.\n", name);
+        //     printColor(yellow, buffer);                    
+        //     return;
+        // }
     }
 
     // create a new process and add to table

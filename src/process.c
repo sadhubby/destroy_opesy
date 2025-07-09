@@ -70,8 +70,7 @@ void execute_instruction(Process *p) {
             Variable *dest = get_variable(p, inst->arg1);
             uint16_t v2 = resolve_value(p, inst->arg2, inst->value);
             uint16_t v3 = resolve_value(p, inst->arg3, inst->value);
-            int32_t result = (int32_t)v2 - (int32_t)v3;
-            dest->value = result < 0 ? 0 : (uint16_t)result;
+            dest->value = CLAMP_UINT16(v2 - v3);
             break;
         }
         // print

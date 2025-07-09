@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <windows.h>
 #include <stdio.h>
 #include "scheduler.h"
@@ -61,7 +62,7 @@ DWORD WINAPI scheduler_loop(LPVOID lpParam) {
 
         // wake up sleeping processes
         for (int i = 0; i < num_processes; i++) {
-            Process *p = &(process_table[i]);
+            Process *p = (process_table[i]);
             if (p->state == SLEEPING && CPU_TICKS >= p->sleep_until_tick) {
                 p->state = READY;
             }
