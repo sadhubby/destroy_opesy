@@ -63,8 +63,14 @@ void load_config() {
             unsigned int val = (unsigned int)strtoul(value, NULL, 10);
             if (val <= UINT_MAX) system_config.delay_per_exec = val;
             else print_color(yellow, "Warning: delay-per-exec is invalid.\n");
+        } else if (strcmp(key, "max-overall-mem") == 0){
+                system_config.max_overall_mem = atoi(value);
+        } else if (strcmp(key, "mem-per-frame") == 0){
+                system_config.mem_per_frame = atoi(value);
+        } else if (strcmp(key, "mem-per-proc") == 0){
+                system_config.mem_per_proc = atoi(value);
         }
-    }
+    }    
 
     fclose(file);
 }
