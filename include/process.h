@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <config.h>
 
 #define MAX_PROCESS_NAME 50
 #define MAX_LOOP_DEPTH 3
@@ -106,6 +107,7 @@ extern Process **process_table;
 extern uint32_t num_processes;
 extern uint32_t process_table_size;
 
-Process *generate_dummy_process(uint32_t freq);
+Process *generate_dummy_process(Config config);
+void print_process_info(Process *p);
 
 #endif

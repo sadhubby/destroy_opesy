@@ -1,9 +1,11 @@
 #include "process.h"
 #include "scheduler.h"
+#include "config.h"
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
+#include <time.h>
 
 // retain in uint16 bounds
 #define CLAMP_UINT16(x) ((x) > 65535 ? 65535 : (x))
@@ -190,14 +192,19 @@ Instruction parse_add_sub(const char *args, int is_add) {
     trim(var1); trim(var2); trim(var3);
     strcpy(inst.arg1, var1);
 
-    // Parse as raw int first
+    // make sure var3 isn't empty
+    if (var3[0] == '\0') {
+        strcpy(var3, "0");
+    }
+
+    // Parse as raw ints first then variables
     if (sscanf(var2, "%d", &v2) == 1) {
         inst.arg2[0] = '\0';
         inst.value = v2;
-    } // parse as variable
-    else {
+    } else {
         strcpy(inst.arg2, var2);
     }
+    
     if (sscanf(var3, "%d", &v3) == 1) {
         inst.arg3[0] = '\0';
         inst.value = v3;
@@ -322,24 +329,101 @@ int parse_instruction_list(const char *instrs, Instruction *out, int max_count) 
     return count;
 }
 
+static int dummy_pid = 1;
+
 // Generate a dummy process for testing or batch creation
-Process *generate_dummy_process(uint32_t freq) {
-    static int dummy_pid = 1000;
+Process *generate_dummy_process(Config config) {
+    int min_ins = config.min_ins > 1 ? config.min_ins : 1;
+    int max_ins = config.max_ins > min_ins ? config.max_ins : min_ins + 1;
+    int num_inst = min_ins + rand() % (max_ins - min_ins + 1);
+
     Process *p = (Process *)calloc(1, sizeof(Process));
-    snprintf(p->name, MAX_PROCESS_NAME, "dummy_proc_%d", dummy_pid);
+    snprintf(p->name, MAX_PROCESS_NAME, "%d", dummy_pid);
     p->pid = dummy_pid++;
     p->state = READY;
     p->program_counter = 0;
     p->num_var = 0;
-    p->num_inst = 2;
+    p->num_inst = num_inst;
     p->variables = (Variable *)calloc(8, sizeof(Variable));
-    p->instructions = (Instruction *)calloc(2, sizeof(Instruction));
+    p->instructions = (Instruction *)calloc(num_inst, sizeof(Instruction));
 
-    // DECLARE(x, freq); PRINT("Dummy x: " + x)
-    char declare_args[64];
-    snprintf(declare_args, sizeof(declare_args), "x,%u", freq);
-    p->instructions[0] = parse_declare(declare_args);
-    strcpy(p->instructions[1].arg1, "x");
-    p->instructions[1].type = PRINT;
+    // Seed random
+    static int seeded = 0;
+    if (!seeded) { srand((unsigned int)time(NULL)); seeded = 1; }
+
+    // Generate random instructions
+    printf("Generating random process...\n");
+    for (int i = 0; i < num_inst; i++) {
+        int t = rand() % 5; // 0=DECLARE, 1=ADD, 2=SUBTRACT, 3=PRINT, 4=SLEEP
+        char buf[64];
+        int v2_idx = (i > 0) ? rand() % i : 0;
+        int v3_is_var = rand() % 2;
+        int v3_idx = (i > 0) ? rand() % i : 0;
+        int v3_val = rand() % 100;
+        
+        // ensure third argument for add and subtract
+        char v3_buf[16];
+        if (v3_is_var && i > 0) {
+            snprintf(v3_buf, sizeof(v3_buf), "v%d", v3_idx);
+        } else {
+            snprintf(v3_buf, sizeof(v3_buf), "%d", v3_val);
+        }
+
+        // parse respective operations
+        switch (t) {
+            case 0: // DECLARE
+                snprintf(buf, sizeof(buf), "v%d,%d", i, rand() % 100);
+                p->instructions[i] = parse_declare(buf);
+                break;
+            case 1: // ADD
+                snprintf(buf, sizeof(buf), "v%d,v%d,%s", i, v2_idx, v3_buf);
+                p->instructions[i] = parse_add_sub(buf, 1);
+                break;
+            case 2: // SUBTRACT
+                snprintf(buf, sizeof(buf), "v%d,v%d,%s", i, v2_idx, v3_buf);
+                p->instructions[i] = parse_add_sub(buf, 0);
+                break;
+            case 3: // PRINT
+                snprintf(buf, sizeof(buf), "+v%d", (i > 0) ? rand() % i : 0);
+                p->instructions[i] = parse_print(buf);
+                break;
+            case 4: // SLEEP
+                snprintf(buf, sizeof(buf), "%d", 1 + rand() % 10);
+                p->instructions[i] = parse_sleep(buf);
+                break;
+        }
+    }
+
     return p;
+}
+
+void print_process_info(Process *p) {
+    printf("Process PID: %d\n", p->pid);
+    printf("Process name: %s\n", p->name);
+    printf("Number of instructions: %d\n", p->num_inst);
+    for (int i = 0; i < p->num_inst; i++) {
+        Instruction *inst = &p->instructions[i];
+        switch (inst->type) {
+            case DECLARE:
+                printf("  %2d: DECLARE(%s, %d)\n", i, inst->arg1, inst->value);
+                break;
+            case ADD:
+                printf("  %2d: ADD(%s, %s, %s)\n", i, inst->arg1, inst->arg2, inst->arg3);
+                break;
+            case SUBTRACT:
+                printf("  %2d: SUBTRACT(%s, %s, %s)\n", i, inst->arg1, inst->arg2, inst->arg3);
+                break;
+            case PRINT:
+                printf("  %2d: PRINT(%s)\n", i, inst->arg1);
+                break;
+            case SLEEP:
+                printf("  %2d: SLEEP(%d)\n", i, inst->value);
+                break;
+            case FOR:
+                printf("  %2d: FOR([...], %d)\n", i, inst->repeat_count);
+                break;
+            default:
+                printf("  %2d: UNKNOWN\n", i);
+        }
+    }
 }

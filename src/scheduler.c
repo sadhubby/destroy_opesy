@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include "scheduler.h"
 #include "process.h"
+#include "config.h"
 
 uint64_t CPU_TICKS = 0;
 volatile int scheduler_running = 0;
@@ -10,6 +11,9 @@ HANDLE scheduler_thread;
 ReadyQueue ready_queue;
 Process **cpu_cores = NULL;
 int num_cores = 0;
+extern Config config;
+
+static uint64_t last_process_tick = 0;
 
 // initialize the ready queue
 void init_ready_queue() {
@@ -59,6 +63,15 @@ Process *dequeue_ready() {
 DWORD WINAPI scheduler_loop(LPVOID lpParam) {
     while (scheduler_running) {
         CPU_TICKS++;
+
+        // Generate a new process
+        if (config.batch_process_freq > 0 && (CPU_TICKS - last_process_tick) >= (uint64_t)config.batch_process_freq) {
+            Process *dummy = generate_dummy_process(config);
+            add_process(dummy);
+            enqueue_ready(dummy);
+            last_process_tick = CPU_TICKS;
+            printf("[Scheduler] Dummy process generated at tick %llu\n", CPU_TICKS);
+        }
 
         // wake up sleeping processes
         for (int i = 0; i < num_processes; i++) {
