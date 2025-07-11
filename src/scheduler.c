@@ -11,7 +11,7 @@ HANDLE scheduler_thread;
 ReadyQueue ready_queue;
 Process **cpu_cores = NULL;
 int num_cores = 0;
-extern Config config;
+Config config;
 
 static uint64_t last_process_tick = 0;
 
@@ -88,7 +88,8 @@ DWORD WINAPI scheduler_loop(LPVOID lpParam) {
 }
 
 // scheduler thread create
-void start_scheduler() {
+void start_scheduler(Config system_config) {
+    config = system_config;
     scheduler_running = 1;
     scheduler_thread = CreateThread(NULL, 0, scheduler_loop, NULL, 0, NULL);
 }

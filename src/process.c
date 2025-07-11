@@ -1,7 +1,6 @@
 #include "process.h"
 #include "scheduler.h"
 #include "config.h"
-#include "config.h"
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>

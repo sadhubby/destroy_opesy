@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <windows.h>
 #include "process.h"
+#include "config.h"
 
 typedef struct ReadyQueue {
     Process **items;
@@ -20,7 +21,7 @@ extern int num_cores;
 extern ReadyQueue ready_queue;
 
 DWORD WINAPI scheduler_loop(LPVOID lpParam);
-void start_scheduler();
+void start_scheduler(Config config);
 void stop_scheduler();
 void busy_wait_ticks(uint32_t delay_ticks);
 

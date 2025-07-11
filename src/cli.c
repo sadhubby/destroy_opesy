@@ -73,12 +73,8 @@ void runCLI() {
         }
         // scheduler-start
         else if (strcmp(command, "scheduler-start") == 0) {
-            Process *dummy = generate_dummy_process(config);
-            add_process(dummy);
             init_ready_queue();
-            enqueue_ready(dummy);
-            printf("Dummy process generated and added to scheduler.\n");
-            start_scheduler();
+            start_scheduler(config);
         }
         // scheduler-stop
         else if (strcmp(command, "scheduler-stop") == 0) {
