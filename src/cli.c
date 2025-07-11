@@ -74,6 +74,7 @@ void runCLI() {
         // scheduler-start
         else if (strcmp(command, "scheduler-start") == 0) {
             Process *dummy = generate_dummy_process(config.batch_process_freq);
+            print_process_info(dummy);
             add_process(dummy);
             init_ready_queue();
             enqueue_ready(dummy);
