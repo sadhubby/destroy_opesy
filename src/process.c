@@ -6,7 +6,6 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <time.h>
-#include <time.h>
 
 // retain in uint16 bounds
 #define CLAMP_UINT16(x) ((x) > 65535 ? 65535 : (x))
@@ -35,7 +34,17 @@ Variable *get_variable(Process *p, const char *name) {
         }
     }
 
-    // otherwise assign new variable with a value of 0
+    // Grow variable array if needed
+    if (p->num_var >= p->variables_capacity) {
+        int new_cap = p->variables_capacity * 2;
+        Variable *new_vars = realloc(p->variables, new_cap * sizeof(Variable));
+        if (!new_vars) {
+            printf("[ERROR] Failed to realloc variables array for process %d!\n", p->pid);
+            return NULL;
+        }
+        p->variables = new_vars;
+        p->variables_capacity = new_cap;
+    }
     strcpy(p->variables[p->num_var].name, trimmed_name);
     p->variables[p->num_var].value = 0;
     return &p->variables[p->num_var++];
@@ -48,7 +57,7 @@ uint16_t resolve_value(Process *p, const char *arg, uint16_t fallback) {
     return v ? v->value : fallback;
 }
 
-void execute_instruction(Process *p) {
+void execute_instruction(Process *p, Config config) {
     Instruction *inst;
 
     // if inside a for loop
@@ -106,15 +115,15 @@ void execute_instruction(Process *p) {
         
         // for
         case FOR: {
-            ForContext *ctx = &p->for_stack[p->for_depth++];
-            ctx->repeat_count = inst->repeat_count;
-            ctx->remaining = inst->repeat_count - 1;
-            ctx->current_index = 0;
-            ctx->sub_instructions = inst->sub_instructions;
-            ctx->sub_instruction_count = inst->sub_instruction_count;
-            inst = &ctx->sub_instructions[ctx->current_index];
-            execute_instruction(p);
-            break;
+            // ForContext *ctx = &p->for_stack[p->for_depth++];
+            // ctx->repeat_count = inst->repeat_count;
+            // ctx->remaining = inst->repeat_count - 1;
+            // ctx->current_index = 0;
+            // ctx->sub_instructions = inst->sub_instructions;
+            // ctx->sub_instruction_count = inst->sub_instruction_count;
+            // inst = &ctx->sub_instructions[ctx->current_index];
+            // execute_instruction(p);
+            // break;
         }
         // sleep
         case SLEEP: {
@@ -126,6 +135,9 @@ void execute_instruction(Process *p) {
         }
 
     }
+
+    // Record the time of this instruction execution
+    p->last_exec_time = time(NULL);
 
     // if in for loop, move index in for loop
     if (p->for_depth > 0) {
@@ -346,7 +358,8 @@ Process *generate_dummy_process(Config config) {
     p->num_var = 0;
     p->num_inst = num_inst;
     p->num_inst = num_inst;
-    p->variables = (Variable *)calloc(8, sizeof(Variable));
+    p->variables_capacity = 8;
+    p->variables = (Variable *)calloc(p->variables_capacity, sizeof(Variable));
     p->instructions = (Instruction *)calloc(num_inst, sizeof(Instruction));
 
     // Seed random
@@ -398,6 +411,7 @@ Process *generate_dummy_process(Config config) {
     return p;
 }
 
+// for debugging
 void print_process_info(Process *p) {
     printf("Process PID: %d\n", p->pid);
     printf("Process name: %s\n", p->name);

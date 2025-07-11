@@ -6,6 +6,8 @@
 #include "process.h"
 #include "config.h"
 
+static Process **finished_processes;
+
 typedef struct ReadyQueue {
     Process **items;
     uint32_t capacity;
@@ -38,5 +40,7 @@ void stop_core_threads();
 
 int get_num_cores();
 Process **get_cpu_cores();
+Process **get_finished_processes();
+int get_finished_count();
 
 #endif

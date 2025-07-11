@@ -69,7 +69,7 @@ void runCLI() {
         }
         // screen -ls
         else if (strcmp(command, "screen -ls") == 0) {
-            screen_list(get_num_cores(), get_cpu_cores());
+            screen_list(get_num_cores(), get_cpu_cores(), get_finished_count(), get_finished_processes());
         }
         // scheduler-start
         else if (strcmp(command, "scheduler-start") == 0) {

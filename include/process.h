@@ -3,7 +3,8 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <config.h>
+#include "config.h"
+#include <time.h>
 
 #define MAX_PROCESS_NAME 50
 #define MAX_LOOP_DEPTH 3
@@ -72,6 +73,7 @@ typedef struct{
 
     Variable *variables;
     int num_var;
+    int variables_capacity;
 
     Instruction *instructions;
     int num_inst;
@@ -87,11 +89,13 @@ typedef struct{
     ForContext for_stack[MAX_LOOP_DEPTH];
     int for_depth;
 
+    time_t last_exec_time;
+
 } Process;
 
 Variable *get_variable(Process *p, const char *name);
 uint16_t resolve_value(Process *p, const char *arg, uint16_t fallback);
-void execute_instruction(Process *p);
+void execute_instruction(Process *p, Config config);
 void add_process(Process *p);
 
 void trim(char *str);

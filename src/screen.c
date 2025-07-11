@@ -69,22 +69,48 @@ void screen_resume(const char *name) {
     
 }
 
-void screen_list(int num_cores, Process **cpu_cores) {
+void screen_list(int num_cores, Process **cpu_cores, int finished_count, Process **finished_processes) {
     int used = 0;
 
     // count used
     for (int i = 0; i < num_cores; i++) {
-        if (cpu_cores[i])
+        if (cpu_cores[i] != NULL) {
             used++;
+        }
     }
 
     // calculate
     int available = num_cores - used;
     double utilization = (num_cores > 0) ? (100.0 * used / num_cores) : 0.0;
 
-    // print
+    // print generic report
     
     printf("CPU Utilization: %.2f%%\n", utilization);
     printf("Cores used: %d\n", used);
     printf("Cores available: %d\n", available);
+
+    // print running processes
+    printf("\nRunning Processes\n");
+    printf("%-16s %-24s %-12s %-10s\n", "Name", "Last Exec Time", "Core", "PC/Total");
+    for (int i = 0; i < num_cores; i++) {
+        if (cpu_cores[i] != NULL) {
+            Process *p = cpu_cores[i];
+            char timebuf[32];
+            struct tm *tm_info = localtime(&p->last_exec_time);
+            strftime(timebuf, sizeof(timebuf), "%Y-%m-%d %H:%M:%S", tm_info);
+            printf("%-16s %-24s %-8d %d/%d\n", p->name, timebuf, i, p->program_counter + 1, p->num_inst);
+        }
+    }
+
+    // print finished processes
+    printf("\nFinished Processes\n");
+    for (int i = 0; i < finished_count; i++) {
+        if (finished_processes[i] != NULL) {
+            Process *p = finished_processes[i];
+            char timebuf[32];
+            struct tm *tm_info = localtime(&p->last_exec_time);
+            strftime(timebuf, sizeof(timebuf), "%Y-%m-%d %H:%M:%S", tm_info);
+            printf("%-16s %-24s %-8s %d/%d\n", p->name, timebuf, "Finished", p->program_counter + 1, p->num_inst);
+        }
+    }
 }

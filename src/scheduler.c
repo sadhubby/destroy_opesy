@@ -17,6 +17,23 @@ static uint64_t last_process_tick = 0;
 CRITICAL_SECTION cpu_cores_cs;
 HANDLE *core_threads = NULL;
 
+// finished process array
+static Process **finished_processes = NULL;
+static int finished_count = 0;
+static int finished_capacity = 0;
+
+void add_finished_process(Process *p) {
+    if (finished_count == finished_capacity) {
+        int new_cap = finished_capacity == 0 ? 16 : finished_capacity * 2;
+        Process **new_arr = malloc(sizeof(Process *) * new_cap);
+        for (int i = 0; i < finished_count; i++) new_arr[i] = finished_processes[i];
+        free(finished_processes);
+        finished_processes = new_arr;
+        finished_capacity = new_cap;
+    }
+    finished_processes[finished_count++] = p;
+}
+
 // initialize the ready queue
 void init_ready_queue() {
     ready_queue.capacity = 16;
@@ -24,6 +41,10 @@ void init_ready_queue() {
     ready_queue.head = 0;
     ready_queue.tail = 0;
     ready_queue.items = malloc(sizeof(Process *) * ready_queue.capacity);
+    // finished process array
+    finished_capacity = 16;
+    finished_count = 0;
+    finished_processes = malloc(sizeof(Process *) * finished_capacity);
 }
 
 // eunqueue new process
@@ -67,7 +88,8 @@ void schedule_fcfs() {
     // assign ready processes to free CPUs
     EnterCriticalSection(&cpu_cores_cs);
     for (int i = 0; i < num_cores; i++) {
-        if (cpu_cores[i] == NULL || cpu_cores[i]->state == FINISHED) {
+        // Only assign to a truly free core (never overwrite a slot, even if FINISHED)
+        if (cpu_cores[i] == NULL) {
             Process *next = dequeue_ready();
             if (next) {
                 cpu_cores[i] = next;
@@ -76,21 +98,17 @@ void schedule_fcfs() {
                 }
             }
         }
+        // Do NOT clear FINISHED slots here; only core threads should do that!
     }
-    LeaveCriticalSection(&cpu_cores_cs);
-
-    // execute running processes
+    // Wake up sleeping processes before executing instructions
     for (int i = 0; i < num_cores; i++) {
         Process *p = cpu_cores[i];
-        if (p && p->state == RUNNING) {
-            execute_instruction(p);
-            // mark finished
-            if (p->program_counter >= p->num_inst && p->for_depth == 0) {
-                p->state = FINISHED;
-                cpu_cores[i] = NULL;
-            }
+        if (p && p->state == SLEEPING && CPU_TICKS >= p->sleep_until_tick) {
+            p->state = RUNNING;
         }
     }
+
+    LeaveCriticalSection(&cpu_cores_cs);
 }
 
 // main scheduler loop
@@ -104,14 +122,6 @@ DWORD WINAPI scheduler_loop(LPVOID lpParam) {
             add_process(dummy);
             enqueue_ready(dummy);
             last_process_tick = CPU_TICKS;
-        }
-
-        // wake up sleeping processes
-        for (int i = 0; i < num_processes; i++) {
-            Process *p = (process_table[i]);
-            if (p->state == SLEEPING && CPU_TICKS >= p->sleep_until_tick) {
-                p->state = READY;
-            }
         }
 
         // fcfs first
@@ -128,15 +138,29 @@ DWORD WINAPI core_loop(LPVOID lpParam) {
         EnterCriticalSection(&cpu_cores_cs);
         Process *p = cpu_cores[core_id];
 
-        if (p && p->state == RUNNING) {
-            LeaveCriticalSection(&cpu_cores_cs);
-            execute_instruction(p);
-            EnterCriticalSection(&cpu_cores_cs);
+        // Only print and fetch state while holding the lock
+        int should_execute = (p && p->state == RUNNING);
+        LeaveCriticalSection(&cpu_cores_cs);
 
-            if (p->program_counter >= p->num_inst && p->for_depth == 0) {
-                p->state = FINISHED;
-                cpu_cores[core_id] = NULL;
+
+        if (should_execute) {
+            execute_instruction(p, config);
+            // Defensive: check if p is still valid after execution
+            EnterCriticalSection(&cpu_cores_cs);
+            Process *p_after = cpu_cores[core_id];
+            LeaveCriticalSection(&cpu_cores_cs);
+            if (config.delay_per_exec > 0) {
+                busy_wait_ticks(config.delay_per_exec);
             }
+        }
+
+        EnterCriticalSection(&cpu_cores_cs);
+        p = cpu_cores[core_id];
+        if (p && p->program_counter >= p->num_inst && p->for_depth == 0) {
+            p->state = FINISHED;
+            add_finished_process(p);
+            cpu_cores[core_id] = NULL;
+            p = NULL;
         }
 
         LeaveCriticalSection(&cpu_cores_cs);
@@ -168,8 +192,10 @@ void stop_scheduler() {
 
 void busy_wait_ticks(uint32_t delay_ticks) {
     uint64_t target_tick = CPU_TICKS + delay_ticks;
+
     while (CPU_TICKS < target_tick) {
-        // to add more code here
+        _ReadWriteBarrier();
+        Sleep(0);
     }
 }
 
@@ -205,4 +231,12 @@ int get_num_cores() {
 
 Process **get_cpu_cores() {
     return cpu_cores;
+}
+
+Process **get_finished_processes() {
+    return finished_processes;
+}
+
+int get_finished_count() {
+    return finished_count;
 }

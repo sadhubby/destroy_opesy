@@ -5,6 +5,6 @@
 
 void screen_start(const char *name);
 void screen_resume(const char *name);
-void screen_list(int num_cores, Process **cpu_cores);
+void screen_list(int num_cores, Process **cpu_cores, int finished_count, Process **finished_processes);
 
 #endif
