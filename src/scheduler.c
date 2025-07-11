@@ -88,7 +88,12 @@ void schedule_fcfs() {
     // assign ready processes to free CPUs
     EnterCriticalSection(&cpu_cores_cs);
     for (int i = 0; i < num_cores; i++) {
-        // Only assign to a truly free core (never overwrite a slot, even if FINISHED)
+        // If the core has no process, or the process is FINISHED, set to NULL
+        if (cpu_cores[i] == NULL || (cpu_cores[i] && cpu_cores[i]->state == FINISHED)) {
+            cpu_cores[i] = NULL;
+        }
+
+        // Only assign to free core
         if (cpu_cores[i] == NULL) {
             Process *next = dequeue_ready();
             if (next) {
@@ -98,8 +103,8 @@ void schedule_fcfs() {
                 }
             }
         }
-        // Do NOT clear FINISHED slots here; only core threads should do that!
     }
+
     // Wake up sleeping processes before executing instructions
     for (int i = 0; i < num_cores; i++) {
         Process *p = cpu_cores[i];
@@ -115,6 +120,7 @@ void schedule_fcfs() {
 DWORD WINAPI scheduler_loop(LPVOID lpParam) {
     while (scheduler_running) {
         CPU_TICKS++;
+        Sleep(1);
 
         // Generate a new process
         if (config.batch_process_freq > 0 && (CPU_TICKS - last_process_tick) >= (uint64_t)config.batch_process_freq) {
@@ -164,7 +170,6 @@ DWORD WINAPI core_loop(LPVOID lpParam) {
         }
 
         LeaveCriticalSection(&cpu_cores_cs);
-        Sleep(1);
     }
     return 0;
 }

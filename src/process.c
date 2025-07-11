@@ -130,14 +130,13 @@ void execute_instruction(Process *p, Config config) {
             // sleep for x ticks
             p->state = SLEEPING;
             p->sleep_until_tick = CPU_TICKS + inst->value;
-            p->program_counter++;
-            return; 
         }
 
     }
 
     // Record the time of this instruction execution
-    p->last_exec_time = time(NULL);
+    if (p->state != SLEEPING)
+        p->last_exec_time = time(NULL);
 
     // if in for loop, move index in for loop
     if (p->for_depth > 0) {
