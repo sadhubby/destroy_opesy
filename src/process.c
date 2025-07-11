@@ -1,10 +1,12 @@
 #include "process.h"
 #include "scheduler.h"
 #include "config.h"
+#include "config.h"
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
+#include <time.h>
 #include <time.h>
 
 // retain in uint16 bounds
@@ -343,6 +345,7 @@ Process *generate_dummy_process(Config config) {
     p->state = READY;
     p->program_counter = 0;
     p->num_var = 0;
+    p->num_inst = num_inst;
     p->num_inst = num_inst;
     p->variables = (Variable *)calloc(8, sizeof(Variable));
     p->instructions = (Instruction *)calloc(num_inst, sizeof(Instruction));
