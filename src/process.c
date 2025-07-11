@@ -354,7 +354,6 @@ Process *generate_dummy_process(Config config) {
     if (!seeded) { srand((unsigned int)time(NULL)); seeded = 1; }
 
     // Generate random instructions
-    printf("Generating random process...\n");
     for (int i = 0; i < num_inst; i++) {
         int t = rand() % 5; // 0=DECLARE, 1=ADD, 2=SUBTRACT, 3=PRINT, 4=SLEEP
         char buf[64];

@@ -70,7 +70,6 @@ DWORD WINAPI scheduler_loop(LPVOID lpParam) {
             add_process(dummy);
             enqueue_ready(dummy);
             last_process_tick = CPU_TICKS;
-            printf("[Scheduler] Dummy process generated at tick %llu\n", CPU_TICKS);
         }
 
         // wake up sleeping processes
