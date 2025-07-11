@@ -14,6 +14,8 @@ int num_cores = 0;
 Config config;
 
 static uint64_t last_process_tick = 0;
+CRITICAL_SECTION cpu_cores_cs;
+HANDLE *core_threads = NULL;
 
 // initialize the ready queue
 void init_ready_queue() {
@@ -59,6 +61,38 @@ Process *dequeue_ready() {
     return p;
 }
 
+// fcfs scheduling
+void schedule_fcfs() {
+
+    // assign ready processes to free CPUs
+    EnterCriticalSection(&cpu_cores_cs);
+    for (int i = 0; i < num_cores; i++) {
+        if (cpu_cores[i] == NULL || cpu_cores[i]->state == FINISHED) {
+            Process *next = dequeue_ready();
+            if (next) {
+                cpu_cores[i] = next;
+                if (next->state == READY) {
+                    next->state = RUNNING;
+                }
+            }
+        }
+    }
+    LeaveCriticalSection(&cpu_cores_cs);
+
+    // execute running processes
+    for (int i = 0; i < num_cores; i++) {
+        Process *p = cpu_cores[i];
+        if (p && p->state == RUNNING) {
+            execute_instruction(p);
+            // mark finished
+            if (p->program_counter >= p->num_inst && p->for_depth == 0) {
+                p->state = FINISHED;
+                cpu_cores[i] = NULL;
+            }
+        }
+    }
+}
+
 // main scheduler loop
 DWORD WINAPI scheduler_loop(LPVOID lpParam) {
     while (scheduler_running) {
@@ -80,8 +114,33 @@ DWORD WINAPI scheduler_loop(LPVOID lpParam) {
             }
         }
 
-        // to add all d scheduler logic
-        // assign ready and run running processes
+        // fcfs first
+        schedule_fcfs();
+    }
+    return 0;
+}
+
+// Per-core thread function
+DWORD WINAPI core_loop(LPVOID lpParam) {
+    int core_id = (int)(intptr_t)lpParam;
+
+    while (scheduler_running) {
+        EnterCriticalSection(&cpu_cores_cs);
+        Process *p = cpu_cores[core_id];
+
+        if (p && p->state == RUNNING) {
+            LeaveCriticalSection(&cpu_cores_cs);
+            execute_instruction(p);
+            EnterCriticalSection(&cpu_cores_cs);
+
+            if (p->program_counter >= p->num_inst && p->for_depth == 0) {
+                p->state = FINISHED;
+                cpu_cores[core_id] = NULL;
+            }
+        }
+
+        LeaveCriticalSection(&cpu_cores_cs);
+        Sleep(1);
     }
     return 0;
 }
@@ -91,6 +150,7 @@ void start_scheduler(Config system_config) {
     config = system_config;
     scheduler_running = 1;
     scheduler_thread = CreateThread(NULL, 0, scheduler_loop, NULL, 0, NULL);
+    start_core_threads();
 }
 
 // close scheduler thread
@@ -98,6 +158,7 @@ void stop_scheduler() {
     scheduler_running = 0;
     WaitForSingleObject(scheduler_thread, INFINITE);
     CloseHandle(scheduler_thread);
+    stop_core_threads();
 }
 
 void busy_wait_ticks(uint32_t delay_ticks) {
@@ -112,4 +173,23 @@ void init_cpu_cores(int n) {
     num_cores = n;
     cpu_cores = malloc(sizeof(Process *) * n);
     for (int i = 0; i < n; i++) cpu_cores[i] = NULL;
+}
+
+void start_core_threads() {
+    InitializeCriticalSection(&cpu_cores_cs);
+    core_threads = malloc(sizeof(HANDLE) * num_cores);
+
+    for (int i = 0; i < num_cores; i++)
+        core_threads[i] = CreateThread(NULL, 0, core_loop, (LPVOID)(intptr_t)i, 0, NULL);
+}
+
+void stop_core_threads() {
+
+    for (int i = 0; i < num_cores; i++) {
+        WaitForSingleObject(core_threads[i], INFINITE);
+        CloseHandle(core_threads[i]);
+    }
+    
+    free(core_threads);
+    DeleteCriticalSection(&cpu_cores_cs);
 }

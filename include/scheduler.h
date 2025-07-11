@@ -33,5 +33,7 @@ void assign_processes_to_cores();
 void scheduler_tick();
 
 void init_cpu_cores(int n);
+void start_core_threads();
+void stop_core_threads();
 
 #endif

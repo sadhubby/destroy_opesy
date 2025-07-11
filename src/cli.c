@@ -74,6 +74,7 @@ void runCLI() {
         // scheduler-start
         else if (strcmp(command, "scheduler-start") == 0) {
             init_ready_queue();
+            init_cpu_cores(config.num_cpu);
             start_scheduler(config);
         }
         // scheduler-stop

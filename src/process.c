@@ -96,11 +96,11 @@ void execute_instruction(Process *p) {
         // print
         case PRINT: {
             Variable *v = get_variable(p, inst->arg1);
-            if (v) {
-                printf("Hello world from %s! Value of %s = %u\n", p->name, v->name, v->value);
-            } else {
-                printf("Hello world from %s!\n", p->name);
-            }
+            // if (v) {
+            //     printf("Hello world from %s! Value of %s = %u\n", p->name, v->name, v->value);
+            // } else {
+            //     printf("Hello world from %s!\n", p->name);
+            // }
             break;
         }
         
