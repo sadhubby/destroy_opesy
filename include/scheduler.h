@@ -36,4 +36,7 @@ void init_cpu_cores(int n);
 void start_core_threads();
 void stop_core_threads();
 
+int get_num_cores();
+Process **get_cpu_cores();
+
 #endif

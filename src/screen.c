@@ -3,7 +3,6 @@
 #include <time.h>
 #include "screen.h"
 
-// static Process *process_table[MAX_PROCESSES];
 static int process_count = 0;
 static int next_pid = 1;
 
@@ -30,11 +29,6 @@ void process_smi(Process *p) {
 
 // screen -s
 void screen_start(const char *name) {
-    // check for count
-    if (process_count >= MAX_PROCESSES) {
-        printColor(yellow, "Max session limit reached.\n");
-        return;
-    }
 
     // check for duplicate
     for (int i = 0; i < process_count; i++) {
@@ -75,6 +69,22 @@ void screen_resume(const char *name) {
     
 }
 
-void screen_list() {
+void screen_list(int num_cores, Process **cpu_cores) {
+    int used = 0;
+
+    // count used
+    for (int i = 0; i < num_cores; i++) {
+        if (cpu_cores[i])
+            used++;
+    }
+
+    // calculate
+    int available = num_cores - used;
+    double utilization = (num_cores > 0) ? (100.0 * used / num_cores) : 0.0;
+
+    // print
     
+    printf("CPU Utilization: %.2f%%\n", utilization);
+    printf("Cores used: %d\n", used);
+    printf("Cores available: %d\n", available);
 }

@@ -159,6 +159,11 @@ void stop_scheduler() {
     WaitForSingleObject(scheduler_thread, INFINITE);
     CloseHandle(scheduler_thread);
     stop_core_threads();
+
+    // Clear cpu_cores when stopping scheduler
+    for (int i = 0; i < num_cores; i++) {
+        cpu_cores[i] = NULL;
+    }
 }
 
 void busy_wait_ticks(uint32_t delay_ticks) {
@@ -192,4 +197,12 @@ void stop_core_threads() {
     
     free(core_threads);
     DeleteCriticalSection(&cpu_cores_cs);
+}
+
+int get_num_cores() {
+    return num_cores;
+}
+
+Process **get_cpu_cores() {
+    return cpu_cores;
 }
