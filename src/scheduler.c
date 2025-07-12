@@ -145,7 +145,7 @@ void schedule_rr () {
 
         if (cpu_cores[i] == NULL) {
             Process *next = dequeue_ready();
-            printf("\n%lld ----- %lld", memory.free_memory, next->memory_allocation);
+            printf("\n%lld", next->memory_allocation);
             
             if (next && memory.free_memory >= next->memory_allocation) {
                 
