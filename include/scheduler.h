@@ -2,7 +2,7 @@
 #define SCHEDULER_H
 
 #include <stdint.h>
-#include <windows.h>
+// #include <windows.h>
 #include "process.h"
 #include "config.h"
 #include "memory.h"

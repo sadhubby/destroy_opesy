@@ -1,5 +1,5 @@
 #include <stdlib.h>
-#include <windows.h>
+// #include <windows.h>
 #include <stdio.h>
 #include <string.h>
 #include "scheduler.h"
@@ -182,6 +182,11 @@ void schedule_rr () {
 DWORD WINAPI scheduler_loop(LPVOID lpParam) {
     while (scheduler_running) {
         CPU_TICKS++;
+
+        if (CPU_TICKS % quantum == 0) {
+            dump_memory_snapshot(CPU_TICKS / quantum);
+        }
+        
         Sleep(1);
 
         // Generate a new process

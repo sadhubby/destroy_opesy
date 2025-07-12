@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <time.h>
 
 Memory m;
 
@@ -80,4 +81,57 @@ MemoryBlock* init_memory_block(uint64_t total_memory) {
     head->pid = -1;
     head->next = NULL;
     return head;
+}
+
+void dump_memory_snapshot(int quantum_cycle) {
+    char filename[64];
+    snprintf(filename, sizeof(filename), "memory_stamp_%02d.txt", quantum_cycle);
+
+    FILE *fp = fopen(filename, "w");
+    if (!fp) {
+        perror("Error writing memory snapshot");
+        return;
+    }
+
+    // Timestamp
+    time_t now = time(NULL);
+    struct tm *tm_info = localtime(&now);
+    char time_buf[64];
+    strftime(time_buf, sizeof(time_buf), "%m/%d/%Y %I:%M:%S%p", tm_info);
+    fprintf(fp, "Timestamp: (%s)\n", time_buf);
+
+    // Count processes in memory
+    int count = 0;
+    uint64_t external_frag = 0;
+    MemoryBlock *curr = memory_head;
+    while (curr) {
+        if (curr->occupied)
+            count++;
+        else
+            external_frag += (curr->end - curr->base + 1);
+        curr = curr->next;
+    }
+
+    fprintf(fp, "Number of processes in memory: %d\n", count);
+    fprintf(fp, "Total external fragmentation in KB: %llu\n\n", external_frag);
+
+    fprintf(fp, "----end---- = %d\n\n", memory.total_memory);
+    curr = memory_head;
+    while (curr) {
+        fprintf(fp, "%d\n", curr->end);
+        if (curr->occupied) {
+            // Find the process with this pid
+            for (uint32_t i = 0; i < num_processes; i++) {
+                if (process_table[i]->pid == curr->pid) {
+                    fprintf(fp, "%s\n", process_table[i]->name);
+                    break;
+                }
+            }
+        }
+        fprintf(fp, "%d\n\n", curr->base);
+        curr = curr->next;
+    }
+    fprintf(fp, "----start-- = 0\n");
+
+    fclose(fp);
 }
