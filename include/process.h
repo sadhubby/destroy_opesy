@@ -90,6 +90,7 @@ typedef struct{
     int for_depth;
 
     time_t last_exec_time;
+    uint64_t memory_allocation;
 
 } Process;
 

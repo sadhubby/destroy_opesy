@@ -7,11 +7,15 @@
 
 typedef struct {
     uint64_t total_memory;
+    uint64_t free_memory;
     uint64_t mem_per_frame;
     uint64_t mem_per_proc;
     Process **items;
     int num_processes_in_memory;
     time_t last_memory_time;
 } Memory;
+
+
+void init_memory(uint64_t total_memory, uint64_t mem_per_frame, uint64_t mem_per_proc);
 
 #endif

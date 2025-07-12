@@ -6,6 +6,7 @@
 #include "screen.h"
 #include "scheduler.h"
 #include "process.h"
+#include "memory.h"
 
 // global variables
 static bool initialized = false;
@@ -150,8 +151,7 @@ void initialize(){
     printf("  max-overall-mem: %d\n", config.max_overall_mem);
     printf("  mem-per-frame: %d\n", config.mem_per_frame);
     printf("  mem-per-proc: %d\n", config.mem_per_proc);
-
-    
+    init_memory(config.max_overall_mem, config.mem_per_frame, config.mem_per_proc);
     
     initialized = true;
 }
