@@ -61,23 +61,23 @@ void execute_instruction(Process *p, Config config) {
     Instruction *inst;
 
     // if inside a for loop
-    if (p->for_depth > 0) {
-        ForContext *ctx = &p->for_stack[p->for_depth - 1];
-        if (ctx->current_index < ctx->sub_instruction_count) {
-            inst = &ctx->sub_instructions[ctx->current_index];
-        } else if (ctx->remaining > 0) {
-            ctx->remaining--;
-            ctx->current_index = 0;
-            inst = &ctx->sub_instructions[ctx->current_index];
-        } else {
-            // when the loop is done, pop from stack
-            p->for_depth--;
-            p->program_counter++;
-            return;
-        }
-    }
-    else
-        inst = &p->instructions[p->program_counter];
+    // if (p->for_depth > 0) {
+    //     ForContext *ctx = &p->for_stack[p->for_depth - 1];
+    //     if (ctx->current_index < ctx->sub_instruction_count) {
+    //         inst = &ctx->sub_instructions[ctx->current_index];
+    //     } else if (ctx->remaining > 0) {
+    //         ctx->remaining--;
+    //         ctx->current_index = 0;
+    //         inst = &ctx->sub_instructions[ctx->current_index];
+    //     } else {
+    //         // when the loop is done, pop from stack
+    //         p->for_depth--;
+    //         p->program_counter++;
+    //         return;
+    //     }
+    // }
+    // else
+    inst = &p->instructions[p->program_counter];
 
     switch (inst->type) {
         // declare
@@ -104,7 +104,7 @@ void execute_instruction(Process *p, Config config) {
         }
         // print
         case PRINT: {
-            Variable *v = get_variable(p, inst->arg1);
+            // Variable *v = get_variable(p, inst->arg1);
             // if (v) {
             //     printf("Hello world from %s! Value of %s = %u\n", p->name, v->name, v->value);
             // } else {
@@ -139,11 +139,11 @@ void execute_instruction(Process *p, Config config) {
         p->last_exec_time = time(NULL);
 
     // if in for loop, move index in for loop
-    if (p->for_depth > 0) {
-        p->for_stack[p->for_depth - 1].current_index++;
-    } else {
-        p->program_counter++;
-    }
+    // if (p->for_depth > 0) {
+    //     p->for_stack[p->for_depth - 1].current_index++;
+    // } else {
+    p->program_counter++;
+    // }
 
     return;
 }
@@ -198,8 +198,6 @@ Instruction parse_add_sub(const char *args, int is_add) {
     inst.type = is_add ? ADD : SUBTRACT;
     char var1[50], var2[50], var3[50];
     int v2, v3;
-    int n2, n3;
-    n2 = n3 = 0;
     sscanf(args, "%49[^,],%49[^,],%49[^,]", var1, var2, var3);
     trim(var1); trim(var2); trim(var3);
     strcpy(inst.arg1, var1);

@@ -6,8 +6,6 @@
 #include "process.h"
 #include "config.h"
 
-static Process **finished_processes;
-
 typedef struct ReadyQueue {
     Process **items;
     uint32_t capacity;

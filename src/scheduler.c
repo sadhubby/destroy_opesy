@@ -1,21 +1,28 @@
 #include <stdlib.h>
 #include <windows.h>
 #include <stdio.h>
+#include <string.h>
 #include "scheduler.h"
 #include "process.h"
 #include "config.h"
 
 uint64_t CPU_TICKS = 0;
+uint64_t switch_tick = 0;
 volatile int scheduler_running = 0;
+volatile int processes_generating = 0;
 HANDLE scheduler_thread;
 ReadyQueue ready_queue;
 Process **cpu_cores = NULL;
 int num_cores = 0;
+int quantum;
 Config config;
 
 static uint64_t last_process_tick = 0;
 CRITICAL_SECTION cpu_cores_cs;
 HANDLE *core_threads = NULL;
+
+// 0 is fcfs, 1 is rr
+int schedule_type = 0;
 
 // finished process array
 static Process **finished_processes = NULL;
@@ -116,6 +123,51 @@ void schedule_fcfs() {
     LeaveCriticalSection(&cpu_cores_cs);
 }
 
+void schedule_rr () {
+
+    // assign ready processes to free CPUs
+    
+    EnterCriticalSection(&cpu_cores_cs);
+
+    for (int i = 0; i < num_cores; i++) {
+        // If the core has no process, or the process is FINISHED, set to NULL
+        if (cpu_cores[i] && cpu_cores[i]->state == FINISHED) {
+            cpu_cores[i] = NULL;
+        }
+
+        // Only assign to free core
+
+        if (cpu_cores[i] == NULL) {
+            Process *next = dequeue_ready();
+
+            if (next) {
+                cpu_cores[i] = next;
+                switch_tick = CPU_TICKS + quantum;
+                if (next->state == READY) {
+                    next->state = RUNNING;
+                }
+            }
+        }
+    }
+
+    // Wake up sleeping processes before executing instructions
+    for (int i = 0; i < num_cores; i++) {
+        Process *p = cpu_cores[i];
+        if (p && p->state == SLEEPING && CPU_TICKS >= p->sleep_until_tick) {
+            p->state = RUNNING;
+        }
+
+        // put back to ready queue
+        if (p && p->state == RUNNING && CPU_TICKS >= switch_tick) {
+            cpu_cores[i] = NULL;
+            p->state = READY;
+            enqueue_ready(p);
+        }
+    }
+
+    LeaveCriticalSection(&cpu_cores_cs);
+}
+
 // main scheduler loop
 DWORD WINAPI scheduler_loop(LPVOID lpParam) {
     while (scheduler_running) {
@@ -123,15 +175,19 @@ DWORD WINAPI scheduler_loop(LPVOID lpParam) {
         Sleep(1);
 
         // Generate a new process
-        if (config.batch_process_freq > 0 && (CPU_TICKS - last_process_tick) >= (uint64_t)config.batch_process_freq) {
-            Process *dummy = generate_dummy_process(config);
-            add_process(dummy);
-            enqueue_ready(dummy);
-            last_process_tick = CPU_TICKS;
+        if (processes_generating) {
+            if (config.batch_process_freq > 0 && (CPU_TICKS - last_process_tick) >= (uint64_t)config.batch_process_freq) {
+                Process *dummy = generate_dummy_process(config);
+                add_process(dummy);
+                enqueue_ready(dummy);
+                last_process_tick = CPU_TICKS;
+            }
         }
 
-        // fcfs first
-        schedule_fcfs();
+        if (schedule_type)
+            schedule_rr();
+        else
+            schedule_fcfs();
     }
     return 0;
 }
@@ -151,9 +207,8 @@ DWORD WINAPI core_loop(LPVOID lpParam) {
 
         if (should_execute) {
             execute_instruction(p, config);
-            // Defensive: check if p is still valid after execution
+            
             EnterCriticalSection(&cpu_cores_cs);
-            Process *p_after = cpu_cores[core_id];
             LeaveCriticalSection(&cpu_cores_cs);
             if (config.delay_per_exec > 0) {
                 busy_wait_ticks(config.delay_per_exec);
@@ -178,21 +233,19 @@ DWORD WINAPI core_loop(LPVOID lpParam) {
 void start_scheduler(Config system_config) {
     config = system_config;
     scheduler_running = 1;
+    processes_generating = 1;
+    quantum = config.quantum_cycles;
+
+    if (strcmp(config.scheduler, "rr") == 0)
+        schedule_type = 1;
+
     scheduler_thread = CreateThread(NULL, 0, scheduler_loop, NULL, 0, NULL);
     start_core_threads();
 }
 
-// close scheduler thread
 void stop_scheduler() {
-    scheduler_running = 0;
-    WaitForSingleObject(scheduler_thread, INFINITE);
-    CloseHandle(scheduler_thread);
-    stop_core_threads();
-
-    // Clear cpu_cores when stopping scheduler
-    for (int i = 0; i < num_cores; i++) {
-        cpu_cores[i] = NULL;
-    }
+    processes_generating = 0;
+    printf("%d", processes_generating);
 }
 
 void busy_wait_ticks(uint32_t delay_ticks) {
