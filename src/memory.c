@@ -115,7 +115,7 @@ void dump_memory_snapshot(int quantum_cycle) {
     fprintf(fp, "Number of processes in memory: %d\n", count);
     fprintf(fp, "Total external fragmentation in KB: %llu\n\n", external_frag);
 
-    fprintf(fp, "----end---- = %d\n\n", memory.total_memory);
+    fprintf(fp, "----end---- = %d\n\n", m.total_memory);
     curr = memory_head;
     while (curr) {
         fprintf(fp, "%d\n", curr->end);
