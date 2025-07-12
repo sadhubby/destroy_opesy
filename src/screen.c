@@ -4,7 +4,6 @@
 #include "screen.h"
 
 static int process_count = 0;
-static int next_pid = 1;
 
 #define yellow "\x1b[33m"
 #define green "\x1b[32m"

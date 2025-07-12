@@ -104,7 +104,7 @@ void execute_instruction(Process *p, Config config) {
         }
         // print
         case PRINT: {
-            Variable *v = get_variable(p, inst->arg1);
+            // Variable *v = get_variable(p, inst->arg1);
             // if (v) {
             //     printf("Hello world from %s! Value of %s = %u\n", p->name, v->name, v->value);
             // } else {
@@ -198,8 +198,6 @@ Instruction parse_add_sub(const char *args, int is_add) {
     inst.type = is_add ? ADD : SUBTRACT;
     char var1[50], var2[50], var3[50];
     int v2, v3;
-    int n2, n3;
-    n2 = n3 = 0;
     sscanf(args, "%49[^,],%49[^,],%49[^,]", var1, var2, var3);
     trim(var1); trim(var2); trim(var3);
     strcpy(inst.arg1, var1);
