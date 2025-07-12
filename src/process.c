@@ -61,23 +61,23 @@ void execute_instruction(Process *p, Config config) {
     Instruction *inst;
 
     // if inside a for loop
-    if (p->for_depth > 0) {
-        ForContext *ctx = &p->for_stack[p->for_depth - 1];
-        if (ctx->current_index < ctx->sub_instruction_count) {
-            inst = &ctx->sub_instructions[ctx->current_index];
-        } else if (ctx->remaining > 0) {
-            ctx->remaining--;
-            ctx->current_index = 0;
-            inst = &ctx->sub_instructions[ctx->current_index];
-        } else {
-            // when the loop is done, pop from stack
-            p->for_depth--;
-            p->program_counter++;
-            return;
-        }
-    }
-    else
-        inst = &p->instructions[p->program_counter];
+    // if (p->for_depth > 0) {
+    //     ForContext *ctx = &p->for_stack[p->for_depth - 1];
+    //     if (ctx->current_index < ctx->sub_instruction_count) {
+    //         inst = &ctx->sub_instructions[ctx->current_index];
+    //     } else if (ctx->remaining > 0) {
+    //         ctx->remaining--;
+    //         ctx->current_index = 0;
+    //         inst = &ctx->sub_instructions[ctx->current_index];
+    //     } else {
+    //         // when the loop is done, pop from stack
+    //         p->for_depth--;
+    //         p->program_counter++;
+    //         return;
+    //     }
+    // }
+    // else
+    inst = &p->instructions[p->program_counter];
 
     switch (inst->type) {
         // declare
@@ -139,11 +139,11 @@ void execute_instruction(Process *p, Config config) {
         p->last_exec_time = time(NULL);
 
     // if in for loop, move index in for loop
-    if (p->for_depth > 0) {
-        p->for_stack[p->for_depth - 1].current_index++;
-    } else {
-        p->program_counter++;
-    }
+    // if (p->for_depth > 0) {
+    //     p->for_stack[p->for_depth - 1].current_index++;
+    // } else {
+    p->program_counter++;
+    // }
 
     return;
 }

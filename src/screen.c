@@ -98,19 +98,20 @@ void screen_list(int num_cores, Process **cpu_cores, int finished_count, Process
             char timebuf[32];
             struct tm *tm_info = localtime(&p->last_exec_time);
             strftime(timebuf, sizeof(timebuf), "%Y-%m-%d %H:%M:%S", tm_info);
-            printf("%-16s %-24s %-8d %d/%d\n", p->name, timebuf, i, p->program_counter + 1, p->num_inst);
+            printf("%-16s %-24s %-10d %d/%d\n", p->name, timebuf, i, p->program_counter + 1, p->num_inst);
         }
     }
 
     // print finished processes
     printf("\nFinished Processes\n");
+    printf("%-16s %-24s %-12s %-10s\n", "Name", "Last Exec Time", "Core", "PC/Total");
     for (int i = 0; i < finished_count; i++) {
         if (finished_processes[i] != NULL) {
             Process *p = finished_processes[i];
             char timebuf[32];
             struct tm *tm_info = localtime(&p->last_exec_time);
             strftime(timebuf, sizeof(timebuf), "%Y-%m-%d %H:%M:%S", tm_info);
-            printf("%-16s %-24s %-8s %d/%d\n", p->name, timebuf, "Finished", p->program_counter + 1, p->num_inst);
+            printf("%-16s %-24s %-10s     %d/%d\n", p->name, timebuf, "Finished", p->program_counter, p->num_inst);
         }
     }
 }

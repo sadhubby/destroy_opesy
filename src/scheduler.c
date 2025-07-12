@@ -7,6 +7,7 @@
 
 uint64_t CPU_TICKS = 0;
 volatile int scheduler_running = 0;
+volatile int processes_generating = 0;
 HANDLE scheduler_thread;
 ReadyQueue ready_queue;
 Process **cpu_cores = NULL;
@@ -123,11 +124,13 @@ DWORD WINAPI scheduler_loop(LPVOID lpParam) {
         Sleep(1);
 
         // Generate a new process
-        if (config.batch_process_freq > 0 && (CPU_TICKS - last_process_tick) >= (uint64_t)config.batch_process_freq) {
-            Process *dummy = generate_dummy_process(config);
-            add_process(dummy);
-            enqueue_ready(dummy);
-            last_process_tick = CPU_TICKS;
+        if (processes_generating) {
+            if (config.batch_process_freq > 0 && (CPU_TICKS - last_process_tick) >= (uint64_t)config.batch_process_freq) {
+                Process *dummy = generate_dummy_process(config);
+                add_process(dummy);
+                enqueue_ready(dummy);
+                last_process_tick = CPU_TICKS;
+            }
         }
 
         // fcfs first
@@ -178,21 +181,14 @@ DWORD WINAPI core_loop(LPVOID lpParam) {
 void start_scheduler(Config system_config) {
     config = system_config;
     scheduler_running = 1;
+    processes_generating = 1;
     scheduler_thread = CreateThread(NULL, 0, scheduler_loop, NULL, 0, NULL);
     start_core_threads();
 }
 
-// close scheduler thread
 void stop_scheduler() {
-    scheduler_running = 0;
-    WaitForSingleObject(scheduler_thread, INFINITE);
-    CloseHandle(scheduler_thread);
-    stop_core_threads();
-
-    // Clear cpu_cores when stopping scheduler
-    for (int i = 0; i < num_cores; i++) {
-        cpu_cores[i] = NULL;
-    }
+    processes_generating = 0;
+    printf("%d", processes_generating);
 }
 
 void busy_wait_ticks(uint32_t delay_ticks) {
