@@ -16,6 +16,8 @@ typedef struct {
 } Memory;
 
 
-void init_memory(uint64_t total_memory, uint64_t mem_per_frame, uint64_t mem_per_proc);
+Memory init_memory(uint64_t total_memory, uint64_t mem_per_frame, uint64_t mem_per_proc);
+Memory update_free_memory(Memory new_memory);
+
 
 #endif

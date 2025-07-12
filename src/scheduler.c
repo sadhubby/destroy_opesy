@@ -5,6 +5,8 @@
 #include "scheduler.h"
 #include "process.h"
 #include "config.h"
+#include "memory.h"
+
 
 uint64_t CPU_TICKS = 0;
 uint64_t switch_tick = 0;
@@ -15,7 +17,9 @@ ReadyQueue ready_queue;
 Process **cpu_cores = NULL;
 int num_cores = 0;
 int quantum;
-Config config;
+Config config ;
+Memory memory;
+
 
 static uint64_t last_process_tick = 0;
 CRITICAL_SECTION cpu_cores_cs;
@@ -103,11 +107,13 @@ void schedule_fcfs() {
         // Only assign to free core
         if (cpu_cores[i] == NULL) {
             Process *next = dequeue_ready();
-            if (next) {
+            if (next && memory.free_memory >= next->memory_allocation) {
                 cpu_cores[i] = next;
                 if (next->state == READY) {
                     next->state = RUNNING;
                 }
+                memory = update_free_memory(memory);
+
             }
         }
     }
@@ -139,13 +145,16 @@ void schedule_rr () {
 
         if (cpu_cores[i] == NULL) {
             Process *next = dequeue_ready();
-
-            if (next) {
+            printf("\n%lld ----- %lld", memory.free_memory, next->memory_allocation);
+            
+            if (next && memory.free_memory >= next->memory_allocation) {
+                
                 cpu_cores[i] = next;
                 switch_tick = CPU_TICKS + quantum;
                 if (next->state == READY) {
                     next->state = RUNNING;
                 }
+                memory = update_free_memory(memory);
             }
         }
     }
@@ -235,7 +244,7 @@ void start_scheduler(Config system_config) {
     scheduler_running = 1;
     processes_generating = 1;
     quantum = config.quantum_cycles;
-
+    memory = init_memory(config.max_overall_mem, config.mem_per_frame, config.mem_per_proc);
     if (strcmp(config.scheduler, "rr") == 0)
         schedule_type = 1;
 
