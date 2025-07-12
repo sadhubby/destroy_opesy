@@ -344,7 +344,7 @@ static int dummy_pid = 1;
 // Generate a dummy process for testing or batch creation
 Process *generate_dummy_process(Config config) {
     int min_ins = config.min_ins > 1 ? config.min_ins : 1;
-    int max_ins = config.max_ins > min_ins ? config.max_ins : min_ins + 1;
+    int max_ins = config.max_ins > min_ins ? config.max_ins : min_ins /* + 1 */; //+1 was commented
     int num_inst = min_ins + rand() % (max_ins - min_ins + 1);
 
     Process *p = (Process *)calloc(1, sizeof(Process));
