@@ -30,5 +30,5 @@ Memory update_free_memory(Memory mem);
 Memory free_process_memory(Process *p, MemoryBlock **head_ref);
 MemoryBlock* init_memory_block(uint64_t total_memory);
 void merge_adjacent_free_blocks(MemoryBlock **head_ref);
-void dump_memory_snapshot(int quantum_cycle);
+void write_memory_snapshot(int quantum_cycle, MemoryBlock *memory_head);
 #endif

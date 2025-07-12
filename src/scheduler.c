@@ -1,5 +1,5 @@
 #include <stdlib.h>
-// #include <windows.h>
+#include <windows.h>
 #include <stdio.h>
 #include <string.h>
 #include "scheduler.h"
@@ -24,7 +24,7 @@ MemoryBlock* memory_head;
 static uint64_t last_process_tick = 0;
 CRITICAL_SECTION cpu_cores_cs;
 HANDLE *core_threads = NULL;
-
+static int quantum_cycle = 0; //new add
 // 0 is fcfs, 1 is rr
 int schedule_type = 0;
 
@@ -182,12 +182,7 @@ void schedule_rr () {
 DWORD WINAPI scheduler_loop(LPVOID lpParam) {
     while (scheduler_running) {
         CPU_TICKS++;
-
-        if (CPU_TICKS % quantum == 0) {
-            dump_memory_snapshot(CPU_TICKS / quantum);
-        }
-        
-        Sleep(1);
+        Sleep(10);
 
         // Generate a new process
         if (processes_generating) {
@@ -203,7 +198,15 @@ DWORD WINAPI scheduler_loop(LPVOID lpParam) {
             schedule_rr();
         else
             schedule_fcfs();
+
+        if (CPU_TICKS % quantum == 0) {
+            quantum_cycle++;
+            write_memory_snapshot(CPU_TICKS, memory_head);
+        }
     }
+
+      
+
     return 0;
 }
 
