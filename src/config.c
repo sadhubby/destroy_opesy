@@ -81,8 +81,34 @@ int load_config(Config *config) {
                 config->delay_per_exec = val;
             else
                 printColor(yellow, "Warning: max-ins is invalid (must be ≥ 0)\n");
+        }  
+        
+        //memory related variables
+        else if (strcmp(key, "max-overall-mem") == 0) {
+            unsigned int val = (unsigned int)strtoul(value, NULL, 10);
+            if (val >= 0)
+                config->max_overall_mem = val; //  change this to max_overall_mem = val from config file
+            /* else
+                printColor(yellow, "Warning: max-ins is invalid (must be ≥ 0)\n");  */
+        }
+        else if (strcmp(key, "mem-per-frame") == 0) {
+            unsigned int val = (unsigned int)strtoul(value, NULL, 10);
+            if (val >= 0)
+                config->mem_per_frame = val; //  change this to mem-per-frame = val from config file
+            /* else
+                printColor(yellow, "Warning: max-ins is invalid (must be ≥ 0)\n"); */ 
+        }
+        else if (strcmp(key, "mem-per-proc") == 0) {
+            unsigned int val = (unsigned int)strtoul(value, NULL, 10);
+            if (val >= 0)
+                config->mem_per_proc= val; //  change this to mem-per-frame = val from config file
+            /* else
+                printColor(yellow, "Warning: max-ins is invalid (must be ≥ 0)\n");  */
+        }
 
-        } else {
+
+
+        else {
             printf("Warning: Unrecognized config key: %s\n", key);
         }
     }

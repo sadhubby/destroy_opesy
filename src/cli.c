@@ -147,5 +147,11 @@ void initialize(){
     printf("  min-ins: %d\n", config.min_ins);
     printf("  max-ins: %d\n", config.max_ins);
     printf("  delays-per-exec: %d\n", config.delay_per_exec);
+    printf("  max-overall-mem: %d\n", config.max_overall_mem);
+    printf("  mem-per-frame: %d\n", config.mem_per_frame);
+    printf("  mem-per-proc: %d\n", config.mem_per_proc);
+
+    
+    
     initialized = true;
 }

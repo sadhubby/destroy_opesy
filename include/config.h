@@ -9,6 +9,9 @@ typedef struct {
     int min_ins;
     int max_ins;
     int delay_per_exec;
+    int max_overall_mem;
+    int mem_per_frame; 
+    int mem_per_proc; 
 } Config;
 
 extern Config system_config;
