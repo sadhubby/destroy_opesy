@@ -145,7 +145,6 @@ void schedule_rr () {
 
         if (cpu_cores[i] == NULL) {
             Process *next = dequeue_ready();
-            printf("\n%lld", next->memory_allocation);
             
             if (next && memory.free_memory >= next->memory_allocation) {
                 
@@ -171,6 +170,7 @@ void schedule_rr () {
             cpu_cores[i] = NULL;
             p->state = READY;
             enqueue_ready(p);
+            memory = free_memory(memory);
         }
     }
 
@@ -229,6 +229,7 @@ DWORD WINAPI core_loop(LPVOID lpParam) {
         if (p && p->program_counter >= p->num_inst && p->for_depth == 0) {
             p->state = FINISHED;
             add_finished_process(p);
+            memory = free_memory(memory);
             cpu_cores[core_id] = NULL;
             p = NULL;
         }
@@ -254,7 +255,6 @@ void start_scheduler(Config system_config) {
 
 void stop_scheduler() {
     processes_generating = 0;
-    printf("%d", processes_generating);
 }
 
 void busy_wait_ticks(uint32_t delay_ticks) {

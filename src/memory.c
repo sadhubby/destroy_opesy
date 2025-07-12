@@ -18,3 +18,9 @@ Memory update_free_memory(Memory new_memory) {
     new_memory.num_processes_in_memory++;
     return new_memory;
 }
+
+Memory free_memory(Memory new_memory) {
+    new_memory.free_memory += new_memory.mem_per_proc;
+    new_memory.num_processes_in_memory--;
+    return new_memory;
+}
