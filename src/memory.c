@@ -113,7 +113,7 @@ void dump_memory_snapshot(int quantum_cycle) {
     }
 
     fprintf(fp, "Number of processes in memory: %d\n", count);
-    fprintf(fp, "Total external fragmentation in KB: %llu\n\n", external_frag);
+    fprintf(fp, "Total external fragmentation in B: %llu\n\n", external_frag);
 
     fprintf(fp, "----end---- = %d\n\n", m.total_memory);
     curr = memory_head;
@@ -123,7 +123,7 @@ void dump_memory_snapshot(int quantum_cycle) {
             // Find the process with this pid
             for (uint32_t i = 0; i < num_processes; i++) {
                 if (process_table[i]->pid == curr->pid) {
-                    fprintf(fp, "%s\n", process_table[i]->name);
+                    fprintf(fp, "P%s\n", process_table[i]->name);
                     break;
                 }
             }
