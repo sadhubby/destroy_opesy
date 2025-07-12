@@ -85,12 +85,15 @@ typedef struct{
     int end;
 
     bool is_in_screen;
+    int in_memory;
 
     ForContext for_stack[MAX_LOOP_DEPTH];
     int for_depth;
 
     time_t last_exec_time;
     uint64_t memory_allocation;
+    uint64_t mem_base;
+    uint64_t mem_limit;
 
 } Process;
 

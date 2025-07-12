@@ -19,7 +19,7 @@ int num_cores = 0;
 int quantum;
 Config config ;
 Memory memory;
-
+MemoryBlock* memory_head;
 
 static uint64_t last_process_tick = 0;
 CRITICAL_SECTION cpu_cores_cs;
@@ -32,6 +32,7 @@ int schedule_type = 0;
 static Process **finished_processes = NULL;
 static int finished_count = 0;
 static int finished_capacity = 0;
+bool try_allocate_memory(Process* process, MemoryBlock* memory_blocks_head);
 
 void add_finished_process(Process *p) {
     if (finished_count == finished_capacity) {
@@ -146,7 +147,7 @@ void schedule_rr () {
         if (cpu_cores[i] == NULL) {
             Process *next = dequeue_ready();
             
-            if (next && memory.free_memory >= next->memory_allocation) {
+            if (next && (try_allocate_memory(next, memory_head) || next->in_memory == 1)) {
                 
                 cpu_cores[i] = next;
                 switch_tick = CPU_TICKS + quantum;
@@ -154,6 +155,7 @@ void schedule_rr () {
                     next->state = RUNNING;
                 }
                 memory = update_free_memory(memory);
+                next->in_memory = 1;
             }
         }
     }
@@ -170,7 +172,6 @@ void schedule_rr () {
             cpu_cores[i] = NULL;
             p->state = READY;
             enqueue_ready(p);
-            memory = free_memory(memory);
         }
     }
 
@@ -229,7 +230,7 @@ DWORD WINAPI core_loop(LPVOID lpParam) {
         if (p && p->program_counter >= p->num_inst && p->for_depth == 0) {
             p->state = FINISHED;
             add_finished_process(p);
-            memory = free_memory(memory);
+            memory = free_process_memory(p, &memory_head);
             cpu_cores[core_id] = NULL;
             p = NULL;
         }
@@ -246,6 +247,7 @@ void start_scheduler(Config system_config) {
     processes_generating = 1;
     quantum = config.quantum_cycles;
     memory = init_memory(config.max_overall_mem, config.mem_per_frame, config.mem_per_proc);
+    memory_head = init_memory_block(config.max_overall_mem);
     if (strcmp(config.scheduler, "rr") == 0)
         schedule_type = 1;
 
@@ -306,4 +308,37 @@ Process **get_finished_processes() {
 
 int get_finished_count() {
     return finished_count;
+}
+
+bool try_allocate_memory(Process* process, MemoryBlock* memory_blocks_head) {
+    MemoryBlock* curr = memory_blocks_head;
+
+    while (curr != NULL) {
+        if (!curr->occupied && (curr->end - curr->base + 1) >= config.mem_per_proc) {
+            // Allocate memory to the process
+            process->mem_base = curr->base;
+            process->mem_limit = curr->base + config.mem_per_proc - 1;
+            curr->occupied = true;
+            curr->pid = process->pid;
+
+            // If there's leftover space, split the block
+            if ((curr->end - curr->base + 1) > config.mem_per_proc) {
+                MemoryBlock* new_block = malloc(sizeof(MemoryBlock));
+                new_block->base = curr->base + config.mem_per_proc;
+                new_block->end = curr->end;
+                new_block->occupied = false;
+                new_block->pid = -1;
+                new_block->next = curr->next;
+
+                curr->end = new_block->base - 1;
+                curr->next = new_block;
+            }
+
+            return true;
+        }
+
+        curr = curr->next;
+    }
+
+    return false;  // No suitable block found
 }

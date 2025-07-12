@@ -359,6 +359,7 @@ Process *generate_dummy_process(Config config) {
     p->variables = (Variable *)calloc(p->variables_capacity, sizeof(Variable));
     p->instructions = (Instruction *)calloc(num_inst, sizeof(Instruction));
     p->memory_allocation = config.mem_per_proc;
+    p->in_memory = 0;
 
     // Seed random
     static int seeded = 0;

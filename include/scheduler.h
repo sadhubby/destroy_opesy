@@ -5,6 +5,7 @@
 #include <windows.h>
 #include "process.h"
 #include "config.h"
+#include "memory.h"
 
 typedef struct ReadyQueue {
     Process **items;
@@ -19,6 +20,7 @@ extern uint64_t CPU_TICKS;
 extern int num_cores;
 // FIFO for processes
 extern ReadyQueue ready_queue;
+extern MemoryBlock **memory_blocks;
 
 DWORD WINAPI scheduler_loop(LPVOID lpParam);
 void start_scheduler(Config config);
