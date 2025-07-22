@@ -1,7 +1,9 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include <time.h>
 #include "screen.h"
+#include "scheduler.h"
 
 static int process_count = 0;
 
@@ -31,41 +33,91 @@ void screen_start(const char *name) {
 
     // check for duplicate
     for (int i = 0; i < process_count; i++) {
-        // if (strcmp(process_table[i]->name, name) == 0) {
-        //     char buffer[150];
-        //     snprintf(buffer, sizeof(buffer), "Screen session '%s' already exists. Use -r to resume.\n", name);
-        //     printColor(yellow, buffer);                    
-        //     return;
-        // }
+         if (strcmp(process_table[i]->name, name) == 0) {
+             char buffer[150];
+             snprintf(buffer, sizeof(buffer), "Screen session '%s' already exists. Use -r to resume.\n", name);
+             printColor(yellow, buffer);                    
+             return;
+         }
     }
 
     // create a new process and add to table
-    // Process *p = create_process(name, next_pid++);
+    Process *p = malloc(sizeof(Process));
+    if (!p) {
+        printColor(yellow, "Failed to allocate memory for new process.\n");
+        return;
+    }
+    strncpy(p->name, name, sizeof(p->name) - 1);
+    p->name[sizeof(p->name) - 1] = '\0';
+    p->pid = process_count + 1;
+    p->program_counter = 0;
+    p->num_inst = rand() % 1000 + 200; // Randomized instruction length, or from config
+    p->last_exec_time = time(NULL);
+    // Initialize logs, etc.
+
+    add_process(p);
 
     // // print new process
-    // printf("Attached to new screen: %s (PID: %d)\n", p->name, p->pid);
-    // printf("Type 'exit' to return to main menu.\n");
+    printf("Attached to new screen: %s (PID: %d)\n", p->name, p->pid);
+    printf("Type 'exit' to return to main menu.\n");
 
     // // accept inputs
-    // char input[64];
-    // while (1) {
-    //     printf("[%s] Enter command: ", p->name);
-    //     fgets(input, sizeof(input), stdin);
-    //     input[strcspn(input, "\n")] = '\0';
+    char input[64];
+    while (1) {
+        printf("[%s] Enter command: ", p->name);
+        fgets(input, sizeof(input), stdin);
+        input[strcspn(input, "\n")] = '\0';
 
-    //     if (strcmp(input, "exit") == 0) {
-    //         printf("Returning to main menu.\n");
-    //         return;
-    //     } else if (strcmp(input, "process-smi") == 0) {
-    //         process_smi(p);
-    //     } else {
-    //         printColor(yellow, "Invalid screen command format.\n");
-    //     }
-    // }
+        if (strcmp(input, "exit") == 0) {
+        printf("Returning to main menu.\n");
+            return;
+        } else if (strcmp(input, "process-smi") == 0) {
+            process_smi(p);
+        } else {
+            printColor(yellow, "Invalid screen command format.\n");
+        }
+    }
 }
 
 void screen_resume(const char *name) {
+    //in case tapos na yung process
+    int finished_count = get_finished_count();
+    Process **finished_processes = get_finished_processes();
+    for (int i = 0; i < finished_count; i++) {
+        if (finished_processes[i] && strcmp(finished_processes[i]->name, name) == 0) {
+            printf("Process %s not found.\n", name);
+            return;
+        }
+    }
+
     
+    for (uint32_t i = 0; i < num_processes; i++) {
+        if (process_table[i] && strcmp(process_table[i]->name, name) == 0) {
+            Process *p = process_table[i];
+
+            printf("Resumed screen: %s (PID: %d)\n", p->name, p->pid);
+            printf("Type 'exit' to return to main menu.\n");
+
+            char input[64];
+            while (1) {
+                printf("[%s] Enter command: ", p->name);
+                fgets(input, sizeof(input), stdin);
+                input[strcspn(input, "\n")] = '\0';
+
+                if (strcmp(input, "exit") == 0) {
+                    printf("Returning to main menu.\n");
+                    return;
+                } else if (strcmp(input, "process-smi") == 0) {
+                    process_smi(p);
+                } else {
+                    printColor(yellow, "Invalid screen command format.\n");
+                }
+            }
+        }
+    }
+
+    
+    printf("Process %s not found.\n", name);
 }
 
 void screen_list(int num_cores, Process **cpu_cores, int finished_count, Process **finished_processes) {
