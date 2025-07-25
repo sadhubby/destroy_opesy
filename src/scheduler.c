@@ -35,6 +35,8 @@ static int finished_capacity = 0;
 bool try_allocate_memory(Process* process, MemoryBlock* memory_blocks_head);
 
 void add_finished_process(Process *p) {
+    /* printf("[DEBUG] Finishing process: %s (PID: %d)\n", p->name, p->pid);
+ */
     if (finished_count == finished_capacity) {
         int new_cap = finished_capacity == 0 ? 16 : finished_capacity * 2;
         Process **new_arr = malloc(sizeof(Process *) * new_cap);
@@ -57,6 +59,19 @@ void init_ready_queue() {
     finished_capacity = 16;
     finished_count = 0;
     finished_processes = malloc(sizeof(Process *) * finished_capacity);
+}
+
+void print_ready_queue() {
+    printf("\n[READY QUEUE]\n");
+    printf("%-8s %-8s %-8s\n", "Index", "PID", "Name");
+    for (uint32_t i = 0; i < ready_queue.size; i++) {
+        uint32_t idx = (ready_queue.head + i) % ready_queue.capacity;
+        Process *p = ready_queue.items[idx];
+        if (p) {
+            printf("%-8u %-8d %-8s\n", i, p->pid, p->name);
+        }
+    }
+    printf("[END READY QUEUE]\n");
 }
 
 // eunqueue new process
@@ -148,7 +163,7 @@ void schedule_rr () {
             Process *next = dequeue_ready();
             
             if (next && (try_allocate_memory(next, memory_head) || next->in_memory == 1)) {
-                
+                // printf("[DEBUG] Scheduled: %s (PID: %d) on core %d\n", next->name, next->pid, i);
                 cpu_cores[i] = next;
                 switch_tick = CPU_TICKS + quantum;
                 if (next->state == READY) {
@@ -156,6 +171,10 @@ void schedule_rr () {
                 }
                 memory = update_free_memory(memory);
                 next->in_memory = 1;
+            }
+            else if (next){
+                // printf("[DEBUG] Could not allocate memory for: %s (PID: %d)\n", next->name, next->pid);
+                enqueue_ready(next);
             }
         }
     }
@@ -199,6 +218,8 @@ DWORD WINAPI scheduler_loop(LPVOID lpParam) {
         else
             schedule_fcfs();
 
+        // print_ready_queue();
+
         if (CPU_TICKS % quantum == 0) {
             quantum_cycle++;
             write_memory_snapshot(CPU_TICKS, memory_head);
@@ -236,7 +257,7 @@ DWORD WINAPI core_loop(LPVOID lpParam) {
         EnterCriticalSection(&cpu_cores_cs);
         p = cpu_cores[core_id];
         if (p && p->program_counter >= p->num_inst && p->for_depth == 0) {
-            p->state = FINISHED;
+                        p->state = FINISHED;
             add_finished_process(p);
             memory = free_process_memory(p, &memory_head);
             cpu_cores[core_id] = NULL;

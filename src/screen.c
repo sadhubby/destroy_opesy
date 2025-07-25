@@ -158,6 +158,8 @@ void screen_list(int num_cores, Process **cpu_cores, int finished_count, Process
     printf("%-16s %-24s %-12s %-10s\n", "Name", "Last Exec Time", "Core", "PC/Total");
     for (int i = 0; i < finished_count; i++) {
         if (finished_processes[i] != NULL) {
+            // printf("[DEBUG] Finished process: %s (PID: %d)\n", finished_processes[i]->name, finished_processes[i]->pid);
+
             Process *p = finished_processes[i];
             char timebuf[32];
             struct tm *tm_info = localtime(&p->last_exec_time);
