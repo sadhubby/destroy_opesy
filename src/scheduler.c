@@ -201,7 +201,7 @@ void schedule_rr () {
 DWORD WINAPI scheduler_loop(LPVOID lpParam) {
     while (scheduler_running) {
         CPU_TICKS++;
-        Sleep(10);
+        Sleep(1);
 
         // Generate a new process
         if (processes_generating) {
@@ -265,6 +265,26 @@ DWORD WINAPI core_loop(LPVOID lpParam) {
         }
 
         LeaveCriticalSection(&cpu_cores_cs);
+// i asked my best friend copilot if this section had to be changed, just a thought maybe for the problems we had. retard
+/*         if (should_execute) {
+    execute_instruction(p, config);
+
+    EnterCriticalSection(&cpu_cores_cs);
+    // Check for finish immediately after execution
+    p = cpu_cores[core_id];
+    if (p && p->program_counter >= p->num_inst && p->state != FINISHED) {
+        p->state = FINISHED;
+        add_finished_process(p);
+        memory = free_process_memory(p, &memory_head);
+        cpu_cores[core_id] = NULL;
+        p = NULL;
+    }
+    LeaveCriticalSection(&cpu_cores_cs);
+
+    if (config.delay_per_exec > 0) {
+        busy_wait_ticks(config.delay_per_exec);
+    }
+} */
     }
     return 0;
 }

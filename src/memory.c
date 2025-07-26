@@ -60,7 +60,7 @@ Memory free_process_memory(Process *p, MemoryBlock **head_ref) {
         if (curr->occupied && curr->pid == p->pid) {
             curr->occupied = false;
             curr->pid = -1;
-            break;
+            /* break; */
         }
         curr = curr->next;
     }

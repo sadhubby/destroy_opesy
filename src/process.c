@@ -60,6 +60,11 @@ uint16_t resolve_value(Process *p, const char *arg, uint16_t fallback) {
 void execute_instruction(Process *p, Config config) {
     Instruction *inst;
 
+    //guard for out of bounds
+    if (p->program_counter >= p->num_inst) {
+        // Already finished, do nothing
+        return;
+    }
     // if inside a for loop
     // if (p->for_depth > 0) {
     //     ForContext *ctx = &p->for_stack[p->for_depth - 1];
