@@ -86,6 +86,13 @@ void runCLI() {
         else if (strcmp(command, "report-util") == 0) {
             printf("report-util\n");
         }
+        // process-smi
+        else if (strcmp(command, "process-smi") == 0) {
+            printf("process-smi\n");
+        }
+        else if (strcmp(command, "vmstat") == 0) {
+            printf("vmstat\n");
+        }
         // unknown command
         else {
             printColor(yellow, "Unknown command.\n");
