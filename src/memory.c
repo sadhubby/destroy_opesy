@@ -148,3 +148,6 @@ void write_memory_snapshot(int quantum_cycle, MemoryBlock *memory_head) {
 
     fclose(fp);
 }
+
+void handle_process_smi(MemoryBlock *memory_head, Memory *mem);
+// void handle_vmstat(Memory *mem, CPUStats *stats);
