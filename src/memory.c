@@ -156,7 +156,7 @@ void process_smi() {
     printf("| PROCESS-SMI V01.00 Driver Version: 01.00 |\n");
     printf("----------------------------------------------\n");
     printf("CPU-Util: %f%%\n", utilization);
-    printf("Memory Usage: %llddB / %lldB\n", used_memory, memory.total_memory);
+    printf("Memory Usage: %lldB / %lldB\n", used_memory, memory.total_memory);
 
 }
 // void vmstat(Memory *mem, CPUStats *stats);
