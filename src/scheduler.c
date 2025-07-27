@@ -6,7 +6,7 @@
 #include "process.h"
 #include "config.h"
 #include "memory.h"
-
+#include "stats.h"
 
 uint64_t CPU_TICKS = 0;
 uint64_t switch_tick = 0;
@@ -211,6 +211,7 @@ void schedule_rr () {
 DWORD WINAPI scheduler_loop(LPVOID lpParam) {
     while (scheduler_running) {
         CPU_TICKS++;
+        stats.total_ticks++;
         Sleep(1);
 
         // Generate a new process
@@ -227,6 +228,22 @@ DWORD WINAPI scheduler_loop(LPVOID lpParam) {
             schedule_rr();
         else
             schedule_fcfs();
+        
+        bool all_idle = true;
+        EnterCriticalSection(&cpu_cores_cs);
+        for (int i = 0; i < num_cores; i++) {
+            if (cpu_cores[i] && cpu_cores[i]->state == RUNNING) {
+                all_idle = false;
+                break;
+            }
+        }
+        LeaveCriticalSection(&cpu_cores_cs);
+
+        if (all_idle) {
+            stats.idle_ticks++;
+        } else {
+            stats.active_ticks++;
+        }
 
         // print_ready_queue();
 
@@ -306,6 +323,7 @@ void start_scheduler(Config system_config) {
     processes_generating = 1;
     quantum = config.quantum_cycles;
     init_memory(config.max_overall_mem, config.mem_per_frame, config.mem_per_proc);
+    init_stats();
     memory_head = init_memory_block(config.max_overall_mem);
     if (strcmp(config.scheduler, "rr") == 0)
         schedule_type = 1;
