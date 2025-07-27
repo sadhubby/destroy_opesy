@@ -1,5 +1,6 @@
 #include "process.h"
 #include "memory.h"
+#include "scheduler.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -150,10 +151,13 @@ void write_memory_snapshot(int quantum_cycle, MemoryBlock *memory_head) {
 }
 
 void process_smi(MemoryBlock *memory_head, Memory *mem) {
+    int used_memory = mem->total_memory - mem->free_memory;
+
     printf("----------------------------------------------");
     printf("| PROCESS-SMI V01.00 Driver Version: 01.00 |");
     printf("----------------------------------------------");
-    printf("CPU-Util: %%");
+    printf("CPU-Util: %d%%", utilization);
+    printf("Memory Usage: %dB / %dB", used_memory, mem->total_memory);
 
 }
 // void vmstat(Memory *mem, CPUStats *stats);
