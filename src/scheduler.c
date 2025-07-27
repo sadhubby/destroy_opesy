@@ -117,6 +117,7 @@ void schedule_fcfs() {
     for (int i = 0; i < num_cores; i++) {
         // If the core has no process, or the process is FINISHED, set to NULL
         if (cpu_cores[i] == NULL || (cpu_cores[i] && cpu_cores[i]->state == FINISHED)) {
+            // POTATO INSERT UPDATE CPU UTIL FUNCTION HERE
             cpu_cores[i] = NULL;
         }
 
@@ -124,6 +125,7 @@ void schedule_fcfs() {
         if (cpu_cores[i] == NULL) {
             Process *next = dequeue_ready();
             if (next && memory.free_memory >= next->memory_allocation) {
+                // POTATO INSERT UPDATE CPU UTIL FUNCTION HERE
                 cpu_cores[i] = next;
                 if (next->state == READY) {
                     next->state = RUNNING;
@@ -154,6 +156,7 @@ void schedule_rr () {
     for (int i = 0; i < num_cores; i++) {
         // If the core has no process, or the process is FINISHED, set to NULL
         if (cpu_cores[i] && cpu_cores[i]->state == FINISHED) {
+            // POTATO INSERT UPDATE CPU UTIL FUNCTION HERE
             cpu_cores[i] = NULL;
         }
 
@@ -164,6 +167,7 @@ void schedule_rr () {
             
             if (next && (try_allocate_memory(next, memory_head) || next->in_memory == 1)) {
                 // printf("[DEBUG] Scheduled: %s (PID: %d) on core %d\n", next->name, next->pid, i);
+                // POTATO INSERT UPDATE CPU UTIL FUNCTION HERE
                 cpu_cores[i] = next;
                 switch_tick = CPU_TICKS + quantum;
                 if (next->state == READY) {
@@ -188,6 +192,7 @@ void schedule_rr () {
 
         // put back to ready queue
         if (p && p->state == RUNNING && CPU_TICKS >= switch_tick) {
+            // POTATO INSERT UPDATE CPU UTIL FUNCTION HERE
             cpu_cores[i] = NULL;
             p->state = READY;
             enqueue_ready(p);
@@ -321,6 +326,7 @@ void busy_wait_ticks(uint32_t delay_ticks) {
 void init_cpu_cores(int n) {
     num_cores = n;
     cpu_cores = malloc(sizeof(Process *) * n);
+    // POTATO INSERT UPDATE CPU UTIL FUNCTION HERE
     for (int i = 0; i < n; i++) cpu_cores[i] = NULL;
 }
 
