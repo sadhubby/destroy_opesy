@@ -8,10 +8,11 @@
 Memory memory;
 MemoryBlock* memory_head;
 
-void init_memory(uint64_t total_memory, uint64_t mem_per_frame, uint64_t mem_per_proc) {
+void init_memory(uint64_t total_memory, uint64_t mem_per_frame, uint64_t max_mem_per_proc, uint64_t min_mem_per_proc) {
     memory.total_memory = total_memory;
     memory.mem_per_frame = mem_per_frame;
-    memory.mem_per_proc = mem_per_proc;
+    memory.max_mem_per_proc = max_mem_per_proc;
+    memory.min_mem_per_proc = min_mem_per_proc;
     memory.num_processes_in_memory = 0;
     memory.free_memory = total_memory;
 }

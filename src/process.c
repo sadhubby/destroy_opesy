@@ -351,6 +351,7 @@ Process *generate_dummy_process(Config config) {
     int min_ins = config.min_ins > 1 ? config.min_ins : 1;
     int max_ins = config.max_ins > min_ins ? config.max_ins : min_ins /* + 1 */; //+1 was commented
     int num_inst = min_ins + rand() % (max_ins - min_ins + 1);
+    int memory_allocation = config.min_mem_per_proc + rand() % (config.max_mem_per_proc - config.min_mem_per_proc + 1);
 
     Process *p = (Process *)calloc(1, sizeof(Process));
     snprintf(p->name, MAX_PROCESS_NAME, "%d", dummy_pid);
@@ -359,11 +360,10 @@ Process *generate_dummy_process(Config config) {
     p->program_counter = 0;
     p->num_var = 0;
     p->num_inst = num_inst;
-    p->num_inst = num_inst;
     p->variables_capacity = 8;
     p->variables = (Variable *)calloc(p->variables_capacity, sizeof(Variable));
     p->instructions = (Instruction *)calloc(num_inst, sizeof(Instruction));
-    p->memory_allocation = config.mem_per_proc;
+    p->memory_allocation = memory_allocation;
     p->in_memory = 0;
 
     // Seed random

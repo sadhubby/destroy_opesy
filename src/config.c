@@ -88,24 +88,22 @@ int load_config(Config *config) {
             unsigned int val = (unsigned int)strtoul(value, NULL, 10);
             if (val >= 0)
                 config->max_overall_mem = val; //  change this to max_overall_mem = val from config file
-            /* else
-                printColor(yellow, "Warning: max-ins is invalid (must be ≥ 0)\n");  */
         }
         else if (strcmp(key, "mem-per-frame") == 0) {
             unsigned int val = (unsigned int)strtoul(value, NULL, 10);
             if (val >= 0)
-                config->mem_per_frame = val; //  change this to mem-per-frame = val from config file
-            /* else
-                printColor(yellow, "Warning: max-ins is invalid (must be ≥ 0)\n"); */ 
+                config->mem_per_frame = val;
         }
-        else if (strcmp(key, "mem-per-proc") == 0) {
+        else if (strcmp(key, "min-mem-per-proc") == 0) {
             unsigned int val = (unsigned int)strtoul(value, NULL, 10);
             if (val >= 0)
-                config->mem_per_proc= val; //  change this to mem-per-frame = val from config file
-            /* else
-                printColor(yellow, "Warning: max-ins is invalid (must be ≥ 0)\n");  */
+                config->min_mem_per_proc= val;
         }
-
+        else if (strcmp(key, "max-mem-per-proc") == 0) {
+            unsigned int val = (unsigned int)strtoul(value, NULL, 10);
+            if (val >= 0)
+                config->max_mem_per_proc= val;
+        }
 
 
         else {

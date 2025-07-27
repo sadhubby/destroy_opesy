@@ -157,8 +157,9 @@ void initialize(){
     printf("  delays-per-exec: %d\n", config.delay_per_exec);
     printf("  max-overall-mem: %d\n", config.max_overall_mem);
     printf("  mem-per-frame: %d\n", config.mem_per_frame);
-    printf("  mem-per-proc: %d\n", config.mem_per_proc);
-    init_memory(config.max_overall_mem, config.mem_per_frame, config.mem_per_proc);
+    printf("  max-mem-per-proc: %d\n", config.max_mem_per_proc);
+    printf("  min-mem-per-proc: %d\n", config.min_mem_per_proc);
+    init_memory(config.max_overall_mem, config.mem_per_frame, config.max_mem_per_proc, config.min_mem_per_proc);
     
     initialized = true;
 }

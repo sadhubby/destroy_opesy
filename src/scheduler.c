@@ -322,7 +322,7 @@ void start_scheduler(Config system_config) {
     scheduler_running = 1;
     processes_generating = 1;
     quantum = config.quantum_cycles;
-    init_memory(config.max_overall_mem, config.mem_per_frame, config.mem_per_proc);
+    init_memory(config.max_overall_mem, config.mem_per_frame, config.max_mem_per_proc, config.min_mem_per_proc);
     init_stats();
     memory_head = init_memory_block(config.max_overall_mem);
     if (strcmp(config.scheduler, "rr") == 0)
@@ -395,17 +395,17 @@ bool try_allocate_memory(Process* process, MemoryBlock* memory_blocks_head) {
     MemoryBlock* curr = memory_blocks_head;
 
     while (curr != NULL) {
-        if (!curr->occupied && (curr->end - curr->base + 1) >= config.mem_per_proc) {
+        if (!curr->occupied && (curr->end - curr->base + 1) >= process->memory_allocation) {
             // Allocate memory to the process
             process->mem_base = curr->base;
-            process->mem_limit = curr->base + config.mem_per_proc - 1;
+            process->mem_limit = curr->base + process->memory_allocation - 1;
             curr->occupied = true;
             curr->pid = process->pid;
 
             // If there's leftover space, split the block
-            if ((curr->end - curr->base + 1) > config.mem_per_proc) {
+            if ((curr->end - curr->base + 1) > process->memory_allocation) {
                 MemoryBlock* new_block = malloc(sizeof(MemoryBlock));
-                new_block->base = curr->base + config.mem_per_proc;
+                new_block->base = curr->base + process->memory_allocation;
                 new_block->end = curr->end;
                 new_block->occupied = false;
                 new_block->pid = -1;
