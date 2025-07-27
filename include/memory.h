@@ -22,13 +22,13 @@ typedef struct MemoryBlock {
 } MemoryBlock;
 
 
-Memory memory;
-MemoryBlock* memory_head;
+extern Memory memory;
+extern MemoryBlock* memory_head;
 
 // Core memory functions
-Memory init_memory(uint64_t total_memory, uint64_t mem_per_frame, uint64_t mem_per_proc);
-Memory update_free_memory(Memory mem);
-Memory free_process_memory(Process *p, MemoryBlock **head_ref);
+void init_memory(uint64_t total_memory, uint64_t mem_per_frame, uint64_t mem_per_proc);
+void update_free_memory();
+void free_process_memory(Process *p, MemoryBlock **head_ref);
 MemoryBlock* init_memory_block(uint64_t total_memory);
 void merge_adjacent_free_blocks(MemoryBlock **head_ref);
 void write_memory_snapshot(int quantum_cycle, MemoryBlock *memory_head);

@@ -135,7 +135,7 @@ void schedule_fcfs() {
                 if (next->state == READY) {
                     next->state = RUNNING;
                 }
-                memory = update_free_memory(memory);
+                update_free_memory();
 
             }
         }
@@ -178,7 +178,7 @@ void schedule_rr () {
                 if (next->state == READY) {
                     next->state = RUNNING;
                 }
-                memory = update_free_memory(memory);
+                update_free_memory();
                 next->in_memory = 1;
             }
             else if (next){
@@ -232,7 +232,7 @@ DWORD WINAPI scheduler_loop(LPVOID lpParam) {
 
         if (CPU_TICKS % quantum == 0) {
             quantum_cycle++;
-            write_memory_snapshot(CPU_TICKS, memory_head);
+            // write_memory_snapshot(CPU_TICKS, memory_head);
         }
     }
 
@@ -269,7 +269,7 @@ DWORD WINAPI core_loop(LPVOID lpParam) {
         if (p && p->program_counter >= p->num_inst && p->for_depth == 0) {
                         p->state = FINISHED;
             add_finished_process(p);
-            memory = free_process_memory(p, &memory_head);
+            free_process_memory(p, &memory_head);
             cpu_cores[core_id] = NULL;
             p = NULL;
         }
@@ -305,7 +305,7 @@ void start_scheduler(Config system_config) {
     scheduler_running = 1;
     processes_generating = 1;
     quantum = config.quantum_cycles;
-    memory = init_memory(config.max_overall_mem, config.mem_per_frame, config.mem_per_proc);
+    init_memory(config.max_overall_mem, config.mem_per_frame, config.mem_per_proc);
     memory_head = init_memory_block(config.max_overall_mem);
     if (strcmp(config.scheduler, "rr") == 0)
         schedule_type = 1;

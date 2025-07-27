@@ -22,7 +22,7 @@ void print_timestamp(time_t raw_time) {
 }
 
 // process-smi
-void process_smi(Process *p) {
+void screen_process_smi(Process *p) {
     printf("\nProcess name: %s\n", p->name);
     printf("ID: %d\n", p->pid);
     printf("Logs:\n");
@@ -72,7 +72,7 @@ void screen_start(const char *name) {
         printf("Returning to main menu.\n");
             return;
         } else if (strcmp(input, "process-smi") == 0) {
-            process_smi(p);
+            screen_process_smi(p);
         } else {
             printColor(yellow, "Invalid screen command format.\n");
         }
@@ -108,7 +108,7 @@ void screen_resume(const char *name) {
                     printf("Returning to main menu.\n");
                     return;
                 } else if (strcmp(input, "process-smi") == 0) {
-                    process_smi(p);
+                    screen_process_smi(p);
                 } else {
                     printColor(yellow, "Invalid screen command format.\n");
                 }

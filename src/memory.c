@@ -8,17 +8,16 @@
 Memory memory;
 MemoryBlock* memory_head;
 
-Memory init_memory(uint64_t total_memory, uint64_t mem_per_frame, uint64_t mem_per_proc) {
+void init_memory(uint64_t total_memory, uint64_t mem_per_frame, uint64_t mem_per_proc) {
     memory.total_memory = total_memory;
     memory.mem_per_frame = mem_per_frame;
     memory.mem_per_proc = mem_per_proc;
     memory.num_processes_in_memory = 0;
     memory.free_memory = total_memory;
-    return memory;
 }
 
 // Recalculate free memory and active processes by walking the list
-Memory update_free_memory(Memory mem) {
+void update_free_memory() {
     uint64_t free_mem = 0;
     int proc_count = 0;
 
@@ -32,9 +31,8 @@ Memory update_free_memory(Memory mem) {
         curr = curr->next;
     }
 
-    mem.free_memory = free_mem;
-    mem.num_processes_in_memory = proc_count;
-    return mem;
+    memory.free_memory = free_mem;
+    memory.num_processes_in_memory = proc_count;
 }
 
 // Coalesce adjacent free blocks
@@ -55,7 +53,7 @@ void merge_adjacent_free_blocks(MemoryBlock **head_ref) {
 }
 
 // Free a process's memory block and update memory list
-Memory free_process_memory(Process *p, MemoryBlock **head_ref) {
+void free_process_memory(Process *p, MemoryBlock **head_ref) {
     MemoryBlock* curr = *head_ref;
 
     while (curr) {
@@ -71,7 +69,7 @@ Memory free_process_memory(Process *p, MemoryBlock **head_ref) {
     merge_adjacent_free_blocks(head_ref);
 
     // Recalculate memory stats
-    return update_free_memory(memory);
+    update_free_memory();
 }
 
 MemoryBlock* init_memory_block(uint64_t total_memory) {
@@ -154,11 +152,11 @@ MemoryBlock* init_memory_block(uint64_t total_memory) {
 void process_smi() {
     uint64_t used_memory = memory.total_memory - memory.free_memory;
 
-    printf("----------------------------------------------");
-    printf("| PROCESS-SMI V01.00 Driver Version: 01.00 |");
-    printf("----------------------------------------------");
-    printf("CPU-Util: %f%%", utilization);
-    printf("Memory Usage: %llddB / %lldB", used_memory, memory.total_memory);
+    printf("----------------------------------------------\n");
+    printf("| PROCESS-SMI V01.00 Driver Version: 01.00 |\n");
+    printf("----------------------------------------------\n");
+    printf("CPU-Util: %f%%\n", utilization);
+    printf("Memory Usage: %llddB / %lldB\n", used_memory, memory.total_memory);
 
 }
 // void vmstat(Memory *mem, CPUStats *stats);
