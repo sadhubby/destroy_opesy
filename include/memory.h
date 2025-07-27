@@ -34,6 +34,6 @@ MemoryBlock* init_memory_block(uint64_t total_memory);
 void merge_adjacent_free_blocks(MemoryBlock **head_ref);
 
 // vmstat and process-smi
-void process_smi();
+void process_smi(int num_cores, Process **cpu_cores);
 // void vmstat(Memory *mem, CPUStats *stats);
 #endif

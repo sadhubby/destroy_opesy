@@ -43,6 +43,4 @@ Process **get_cpu_cores();
 Process **get_finished_processes();
 int get_finished_count();
 
-extern double utilization;
-
 #endif

@@ -83,7 +83,21 @@ MemoryBlock* init_memory_block(uint64_t total_memory) {
     return head;
 }
 
-void process_smi() {
+void process_smi(int num_cores, Process **cpu_cores) {
+    int used = 0;
+
+    // count used
+    for (int i = 0; i < num_cores; i++) {
+        if (cpu_cores[i] != NULL) {
+            used++;
+        }
+    }
+
+    // calculate
+    int available = num_cores - used;
+    double utilization = (num_cores > 0) ? (100.0 * used / num_cores) : 0.0;
+
+
     uint64_t used_memory = memory.total_memory - memory.free_memory;
     double memory_util = used_memory / memory.total_memory;
 
@@ -99,8 +113,8 @@ void process_smi() {
 
     for (int i = 0; i < num_processes; i++) {
         Process *p = process_table[i];
-        if (p) {
-            printf("PID: %d %lldB\n", p->pid, p->memory_allocation);
+        if (p && (p->state == RUNNING || p->state == SLEEPING)) {
+            printf("P%d %lldB\n", p->pid, p->memory_allocation);
         }
     }
 
