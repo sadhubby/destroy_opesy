@@ -21,8 +21,9 @@ typedef struct MemoryBlock {
     struct MemoryBlock* next;
 } MemoryBlock;
 
-// Global memory pointer
-extern MemoryBlock* memory_head;
+
+Memory memory;
+MemoryBlock* memory_head;
 
 // Core memory functions
 Memory init_memory(uint64_t total_memory, uint64_t mem_per_frame, uint64_t mem_per_proc);

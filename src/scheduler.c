@@ -18,8 +18,6 @@ Process **cpu_cores = NULL;
 int num_cores = 0;
 int quantum;
 Config config ;
-Memory memory;
-MemoryBlock* memory_head;
 
 static uint64_t last_process_tick = 0;
 CRITICAL_SECTION cpu_cores_cs;
