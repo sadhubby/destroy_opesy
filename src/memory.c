@@ -149,11 +149,11 @@ void write_memory_snapshot(int quantum_cycle, MemoryBlock *memory_head) {
     fclose(fp);
 }
 
-void handle_process_smi(MemoryBlock *memory_head, Memory *mem) {
+void process_smi(MemoryBlock *memory_head, Memory *mem) {
     printf("----------------------------------------------");
     printf("| PROCESS-SMI V01.00 Driver Version: 01.00 |");
     printf("----------------------------------------------");
     printf("CPU-Util: %%");
 
 }
-// void handle_vmstat(Memory *mem, CPUStats *stats);
+// void vmstat(Memory *mem, CPUStats *stats);
