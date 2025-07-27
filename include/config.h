@@ -11,9 +11,7 @@ typedef struct {
     int delay_per_exec;
     int max_overall_mem;
     int mem_per_frame; 
-    int mem_per_proc; 
-
-    double cpu_util;
+    int mem_per_proc;
 } Config;
 
 extern Config system_config;

@@ -34,6 +34,10 @@ static int finished_count = 0;
 static int finished_capacity = 0;
 bool try_allocate_memory(Process* process, MemoryBlock* memory_blocks_head);
 
+void update_cpu_util(int used) {
+    double utilization = (num_cores > 0) ? (100.0 * used / num_cores) : 0.0;
+}
+
 void add_finished_process(Process *p) {
     /* printf("[DEBUG] Finishing process: %s (PID: %d)\n", p->name, p->pid);
  */

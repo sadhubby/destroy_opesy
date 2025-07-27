@@ -113,7 +113,6 @@ int load_config(Config *config) {
         }
     }
 
-    config->cpu_util = 0;
     fclose(file);
     return 1;
 }
