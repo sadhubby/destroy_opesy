@@ -20,7 +20,6 @@ typedef struct MemoryBlock {
     bool occupied;
     int pid;
     struct MemoryBlock* next;
-    int size;
 } MemoryBlock;
 
 

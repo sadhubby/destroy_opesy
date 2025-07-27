@@ -96,6 +96,14 @@ void process_smi() {
     printf("==============================================\n");
     printf("Running processes and memory usage:\n");
     printf("----------------------------------------------\n");
+
+    for (int i = 0; i < num_processes; i++) {
+        Process *p = process_table[i];
+        if (p) {
+            printf("PID: %d %lldB\n", p->pid, p->memory_allocation);
+        }
+    }
+
     printf("----------------------------------------------\n");
 
 }
