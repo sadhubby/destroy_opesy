@@ -151,14 +151,14 @@ MemoryBlock* init_memory_block(uint64_t total_memory) {
 //     fclose(fp);
 // }
 
-void process_smi(MemoryBlock *memory_head, Memory *mem) {
-    int used_memory = mem->total_memory - mem->free_memory;
+void process_smi() {
+    uint64_t used_memory = memory.total_memory - memory.free_memory;
 
     printf("----------------------------------------------");
     printf("| PROCESS-SMI V01.00 Driver Version: 01.00 |");
     printf("----------------------------------------------");
-    printf("CPU-Util: %d%%", utilization);
-    printf("Memory Usage: %dB / %dB", used_memory, mem->total_memory);
+    printf("CPU-Util: %f%%", utilization);
+    printf("Memory Usage: %llddB / %lldB", used_memory, memory.total_memory);
 
 }
 // void vmstat(Memory *mem, CPUStats *stats);

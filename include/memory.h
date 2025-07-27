@@ -34,6 +34,6 @@ void merge_adjacent_free_blocks(MemoryBlock **head_ref);
 void write_memory_snapshot(int quantum_cycle, MemoryBlock *memory_head);
 
 // vmstat and process-smi
-void process_smi(MemoryBlock *memory_head, Memory *mem);
+void process_smi();
 // void vmstat(Memory *mem, CPUStats *stats);
 #endif
