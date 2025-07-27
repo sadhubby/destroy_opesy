@@ -84,12 +84,18 @@ MemoryBlock* init_memory_block(uint64_t total_memory) {
 
 void process_smi() {
     uint64_t used_memory = memory.total_memory - memory.free_memory;
+    double memory_util = used_memory / memory.total_memory;
 
     printf("----------------------------------------------\n");
     printf("| PROCESS-SMI V01.00 Driver Version: 01.00 |\n");
     printf("----------------------------------------------\n");
     printf("CPU-Util: %f%%\n", utilization);
     printf("Memory Usage: %lldB / %lldB\n", used_memory, memory.total_memory);
+    printf("Memory Util: %f%%\n\n", memory_util);
+    printf("==============================================\n");
+    printf("Running processes and memory usage:\n");
+    printf("----------------------------------------------\n");
+    printf("----------------------------------------------\n");
 
 }
 // void vmstat(Memory *mem, CPUStats *stats);
