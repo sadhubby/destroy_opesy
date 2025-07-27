@@ -12,6 +12,8 @@ typedef struct {
     int max_overall_mem;
     int mem_per_frame; 
     int mem_per_proc; 
+
+    double cpu_util;
 } Config;
 
 extern Config system_config;
