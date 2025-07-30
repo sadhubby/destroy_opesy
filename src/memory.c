@@ -86,39 +86,60 @@ MemoryBlock* init_memory_block(uint64_t total_memory) {
 void process_smi(int num_cores, Process **cpu_cores) {
     int used = 0;
 
-    // count used
+    // count used CPU cores
     for (int i = 0; i < num_cores; i++) {
         if (cpu_cores[i] != NULL) {
             used++;
         }
     }
 
-    // calculate
-    int available = num_cores - used;
+    // calculate CPU utilization
     double utilization = (num_cores > 0) ? (100.0 * used / num_cores) : 0.0;
 
+    // Allocate dynamic arrays for storing process info
+    int *temp_pids = malloc(sizeof(int) * num_processes);
+    uint64_t *temp_allocs = malloc(sizeof(uint64_t) * num_processes);
+    if (!temp_pids || !temp_allocs) {
+        fprintf(stderr, "Memory allocation failed in process_smi()\n");
+        free(temp_pids);
+        free(temp_allocs);
+        return;
+    }
 
-    uint64_t used_memory = memory.total_memory - memory.free_memory;
-    double memory_util = 100.0 * used_memory / memory.total_memory;
+    int temp_count = 0;
+    uint64_t used_memory = 0;
 
+    // Collect memory allocations of active processes
+    for (int i = 0; i < num_processes; i++) {
+        Process *p = process_table[i];
+        if (p && (p->state == RUNNING || p->state == SLEEPING)) {
+            temp_pids[temp_count] = p->pid;
+            temp_allocs[temp_count] = p->memory_allocation;
+            used_memory += p->memory_allocation;
+            temp_count++;
+        }
+    }
+
+    // Output
     printf("----------------------------------------------\n");
-    printf("| PROCESS-SMI V01.00 Driver Version: 01.00 |\n");
+    printf("| PROCESS-SMI V01.00 Driver Version: 01.00    |\n");
     printf("----------------------------------------------\n");
-    printf("CPU-Util: %f%%\n", utilization);
-    printf("Memory Usage: %lldB / %lldB\n", used_memory, memory.total_memory);
-    printf("Memory Util: %f%%\n\n", memory_util);
+    printf("CPU-Util: %.2f%%\n", utilization);
+    printf("Used Memory: %lldB\n", used_memory);
     printf("==============================================\n");
     printf("Running processes and memory usage:\n");
     printf("----------------------------------------------\n");
 
-    for (int i = 0; i < num_processes; i++) {
-        Process *p = process_table[i];
-        if (p && (p->state == RUNNING || p->state == SLEEPING)) {
-            printf("P%d %lldB\n", p->pid, p->memory_allocation);
-        }
+    for (int i = 0; i < temp_count; i++) {
+        printf("P%d %lldB\n", temp_pids[i], temp_allocs[i]);
     }
 
     printf("----------------------------------------------\n");
 
+    // Free dynamically allocated memory
+    free(temp_pids);
+    free(temp_allocs);
 }
+
+
 // void vmstat(Memory *mem, CPUStats *stats);
