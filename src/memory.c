@@ -84,17 +84,6 @@ MemoryBlock* init_memory_block(uint64_t total_memory) {
 }
 
 void process_smi(int num_cores, Process **cpu_cores) {
-    int used = 0;
-
-    // count used CPU cores
-    for (int i = 0; i < num_cores; i++) {
-        if (cpu_cores[i] != NULL) {
-            used++;
-        }
-    }
-
-    // calculate CPU utilization
-    double utilization = (num_cores > 0) ? (100.0 * used / num_cores) : 0.0;
 
     // Allocate dynamic arrays for storing process info
     int *temp_pids = malloc(sizeof(int) * num_processes);
@@ -119,6 +108,8 @@ void process_smi(int num_cores, Process **cpu_cores) {
             temp_count++;
         }
     }
+
+    double utilization = (num_cores > 0) ? (100.0 * temp_count / num_cores) : 0.0;
 
     // Output
     printf("----------------------------------------------\n");
