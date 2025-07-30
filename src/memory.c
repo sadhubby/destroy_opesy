@@ -99,7 +99,7 @@ void process_smi(int num_cores, Process **cpu_cores) {
 
 
     uint64_t used_memory = memory.total_memory - memory.free_memory;
-    double memory_util = used_memory / memory.total_memory;
+    double memory_util = 100.0 * used_memory / memory.total_memory;
 
     printf("----------------------------------------------\n");
     printf("| PROCESS-SMI V01.00 Driver Version: 01.00 |\n");

@@ -124,6 +124,8 @@ void schedule_fcfs() {
         if (cpu_cores[i] == NULL || (cpu_cores[i] && cpu_cores[i]->state == FINISHED)) {
             update_cpu_util(-1);
             cpu_cores[i] = NULL;
+            free_process_memory(cpu_cores[i], &memory_head);
+            update_free_memory();
         }
 
         // Only assign to free core
@@ -163,6 +165,8 @@ void schedule_rr () {
         if (cpu_cores[i] && cpu_cores[i]->state == FINISHED) {
             update_cpu_util(-1);
             cpu_cores[i] = NULL;
+            free_process_memory(cpu_cores[i], &memory_head);
+            update_free_memory();
         }
 
         // Only assign to free core
@@ -287,6 +291,7 @@ DWORD WINAPI core_loop(LPVOID lpParam) {
                         p->state = FINISHED;
             add_finished_process(p);
             free_process_memory(p, &memory_head);
+            update_free_memory();
             cpu_cores[core_id] = NULL;
             p = NULL;
         }

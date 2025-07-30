@@ -88,7 +88,7 @@ void runCLI() {
         }
         // process-smi
         else if (strcmp(command, "process-smi") == 0) {
-            process_smi();
+            process_smi(get_num_cores(), get_cpu_cores());
         }
         else if (strcmp(command, "vmstat") == 0) {
             printf("vmstat\n");
