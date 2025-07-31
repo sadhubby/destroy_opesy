@@ -30,7 +30,9 @@ typedef enum {
     SUBTRACT,
     PRINT,
     SLEEP,
-    FOR
+    FOR,
+    READ,
+    WRITE
 } InstructionType;
 
 typedef struct Instruction Instruction;
