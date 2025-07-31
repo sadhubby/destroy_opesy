@@ -7,6 +7,7 @@
 #include "config.h"
 #include "memory.h"
 #include "stats.h"
+#include "backing_store.h"
 
 uint64_t CPU_TICKS = 0;
 uint64_t switch_tick = 0;
@@ -21,6 +22,7 @@ Config config ;
 
 static uint64_t last_process_tick = 0;
 CRITICAL_SECTION cpu_cores_cs;
+CRITICAL_SECTION backing_store_cs;
 HANDLE *core_threads = NULL;
 static int quantum_cycle = 0; //new add
 // 0 is fcfs, 1 is rr
@@ -154,7 +156,7 @@ void schedule_fcfs() {
     LeaveCriticalSection(&cpu_cores_cs);
 }
 
-void schedule_rr () {
+/* void schedule_rr () {
 
     // assign ready processes to free CPUs
     
@@ -206,6 +208,189 @@ void schedule_rr () {
             p->state = READY;
             enqueue_ready(p);
         }
+    }
+
+    LeaveCriticalSection(&cpu_cores_cs);
+} */
+/* void schedule_rr () {
+
+    // assign ready processes to free CPUs
+    EnterCriticalSection(&cpu_cores_cs);
+
+    for (int i = 0; i < num_cores; i++) {
+        // If the core has no process, or the process is FINISHED, set to NULL
+        if (cpu_cores[i] && cpu_cores[i]->state == FINISHED) {
+            update_cpu_util(-1);
+            cpu_cores[i] = NULL;
+        }
+
+        // Only assign to free core
+        if (cpu_cores[i] == NULL) {
+            Process *next = dequeue_ready();
+
+            // Try to allocate memory for the process
+            if (next && !(try_allocate_memory(next, memory_head) || next->in_memory == 1)) {
+                // Not enough memory: swap out a process to backing store
+                int victim_found = 0;
+                for (int j = 0; j < num_cores; j++) {
+                    Process *victim = cpu_cores[j];
+                    if (victim && victim->state == RUNNING) {
+                        write_process_to_backing_store(victim);
+                        free_process_memory(victim, &memory_head);
+                        cpu_cores[j] = NULL;
+                        victim_found = 1;
+                        break;
+                    }
+                }
+                // Try again to allocate memory for 'next'
+                if (victim_found && (try_allocate_memory(next, memory_head) || next->in_memory == 1)) {
+                    update_cpu_util(1);
+                    cpu_cores[i] = next;
+                    switch_tick = CPU_TICKS + quantum;
+                    if (next->state == READY) {
+                        next->state = RUNNING;
+                    }
+                    update_free_memory();
+                    next->in_memory = 1;
+                } else {
+                    // Still can't allocate, put back in ready queue or backing store
+                    write_process_to_backing_store(next);
+                }
+            } else if (next && (try_allocate_memory(next, memory_head) || next->in_memory == 1)) {
+                update_cpu_util(1);
+                cpu_cores[i] = next;
+                switch_tick = CPU_TICKS + quantum;
+                if (next->state == READY) {
+                    next->state = RUNNING;
+                }
+                update_free_memory();
+                next->in_memory = 1;
+            } else if (next) {
+                enqueue_ready(next);
+            }
+        }
+    }
+
+    // Wake up sleeping processes before executing instructions
+    for (int i = 0; i < num_cores; i++) {
+        Process *p = cpu_cores[i];
+        if (p && p->state == SLEEPING && CPU_TICKS >= p->sleep_until_tick) {
+            p->state = RUNNING2;
+        }
+
+        // put back to ready queue
+        if (p && p->state == RUNNING && CPU_TICKS >= switch_tick) {
+            update_cpu_util(-1);
+            cpu_cores[i] = NULL;
+            p->state = READY;
+            enqueue_ready(p);
+        }
+    }
+
+    LeaveCriticalSection(&cpu_cores_cs);
+} */
+void schedule_rr () {
+    EnterCriticalSection(&cpu_cores_cs);
+
+    // 1. Assign ready processes to free CPUs
+    for (int i = 0; i < num_cores; i++) {
+        // If the core has no process, or the process is FINISHED, set to NULL
+        if (cpu_cores[i] && cpu_cores[i]->state == FINISHED) {
+            update_cpu_util(-1);
+            cpu_cores[i] = NULL;
+        }
+
+        // Only assign to free core
+        if (cpu_cores[i] == NULL) {
+            Process *next = dequeue_ready();
+
+            if (next) {
+                // Try to allocate memory for the process
+                if (try_allocate_memory(next, memory_head) || next->in_memory == 1) {
+                    update_cpu_util(1);
+                    cpu_cores[i] = next;
+                    switch_tick = CPU_TICKS + quantum;
+                    if (next->state == READY) {
+                        next->state = RUNNING;
+                    }
+                    update_free_memory();
+                    next->in_memory = 1;
+                } else {
+                    // Not enough memory: swap out a victim first
+                    int victim_found = 0;
+                    for (int j = 0; j < num_cores; j++) {
+                        Process *victim = cpu_cores[j];
+                        if (victim && victim->state == RUNNING) {
+                            victim->in_memory = 0;  // Mark as not in memory
+                            write_process_to_backing_store(victim);
+                            free_process_memory(victim, &memory_head);
+                            cpu_cores[j] = NULL;
+                            update_cpu_util(-1);
+                            victim_found = 1;
+                            break;
+                        }
+                    }
+                    
+                    // Try again to allocate memory for 'next'
+                    if (victim_found && try_allocate_memory(next, memory_head)) {
+                        update_cpu_util(1);
+                        cpu_cores[i] = next;
+                        switch_tick = CPU_TICKS + quantum;
+                        if (next->state == READY) {
+                            next->state = RUNNING;
+                        }
+                        update_free_memory();
+                        next->in_memory = 1;
+                    } else {
+                        // Still can't allocate, put in backing store
+                        next->in_memory = 0;
+                        write_process_to_backing_store(next);
+                    }
+                }
+            }
+        }
+    }
+
+    // 2. Wake up sleeping processes and handle preemption
+    for (int i = 0; i < num_cores; i++) {
+        Process *p = cpu_cores[i];
+        if (p && p->state == SLEEPING && CPU_TICKS >= p->sleep_until_tick) {
+            p->state = RUNNING;
+        }
+
+        // Preempt if quantum expired
+        if (p && p->state == RUNNING && CPU_TICKS >= switch_tick) {
+            update_cpu_util(-1);
+            cpu_cores[i] = NULL;
+            p->state = READY;
+            enqueue_ready(p);
+        }
+    }
+
+    // 3. Try to bring back ONE process from backing store (limit to prevent infinite loops)
+    if (CPU_TICKS % 10 == 0) {  // Only check every 10 ticks to reduce overhead
+        Process **backing_arr = NULL;
+        int backing_count = read_all_processes_from_backing_store(&backing_arr);
+        
+        if (backing_arr && backing_count > 0) {
+            // Try to load the first viable process
+            for (int i = 0; i < backing_count && i < 1; i++) {  // Limit to 1 per cycle
+                Process *p = backing_arr[i];
+                if (p && p->pid > 0 && try_allocate_memory(p, memory_head)) {
+                    p->in_memory = 1;
+                    p->state = READY;
+                    remove_process_from_backing_store(p->pid);
+                    enqueue_ready(p);
+                    break;  // Only load one per cycle
+                }
+            }
+            
+            // Clean up
+            for (int i = 0; i < backing_count; i++) {
+                if (backing_arr[i]) free(backing_arr[i]);
+            }
+        }
+        if (backing_arr) free(backing_arr);
     }
 
     LeaveCriticalSection(&cpu_cores_cs);
@@ -363,6 +548,7 @@ void init_cpu_cores(int n) {
 
 void start_core_threads() {
     InitializeCriticalSection(&cpu_cores_cs);
+    InitializeCriticalSection(&backing_store_cs);
     core_threads = malloc(sizeof(HANDLE) * num_cores);
 
     for (int i = 0; i < num_cores; i++)

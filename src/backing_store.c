@@ -39,9 +39,11 @@ void remove_process_from_backing_store(int pid){
     FILE *fp = fopen(BACKING_STORE_FILENAME, "wb");
     if (!fp){
         for(int i = 0; i < count; i++){
-            free(arr);
-            return;
+            free(arr[i]);
+            
         }
+        free(arr);
+        return;
     }
     for (int i = 0; i < count; i++){
         if(arr[i]->pid != pid){
