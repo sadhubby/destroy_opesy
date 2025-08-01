@@ -289,77 +289,22 @@ void schedule_fcfs() {
 
     LeaveCriticalSection(&cpu_cores_cs);
 } */
-void schedule_rr () {
+void schedule_rr() {
     EnterCriticalSection(&cpu_cores_cs);
 
-    // 1. Assign ready processes to free CPUs
-    for (int i = 0; i < num_cores; i++) {
-        // If the core has no process, or the process is FINISHED, set to NULL
-        if (cpu_cores[i] && cpu_cores[i]->state == FINISHED) {
-            update_cpu_util(-1);
-            cpu_cores[i] = NULL;
-        }
-
-        // Only assign to free core
-        if (cpu_cores[i] == NULL) {
-            Process *next = dequeue_ready();
-
-            if (next) {
-                // Try to allocate memory for the process
-                if (try_allocate_memory(next, memory_head) || next->in_memory == 1) {
-                    update_cpu_util(1);
-                    cpu_cores[i] = next;
-                    switch_tick = CPU_TICKS + quantum;
-                    if (next->state == READY) {
-                        next->state = RUNNING;
-                    }
-                    update_free_memory();
-                    next->in_memory = 1;
-                } else {
-                    // Not enough memory: swap out a victim first
-                    int victim_found = 0;
-                    for (int j = 0; j < num_cores; j++) {
-                        Process *victim = cpu_cores[j];
-                        if (victim && victim->state == RUNNING) {
-                            victim->in_memory = 0;  // Mark as not in memory
-                            write_process_to_backing_store(victim);
-                            free_process_memory(victim, &memory_head);
-                            cpu_cores[j] = NULL;
-                            update_cpu_util(-1);
-                            victim_found = 1;
-                            break;
-                        }
-                    }
-                    
-                    // Try again to allocate memory for 'next'
-                    if (victim_found && try_allocate_memory(next, memory_head)) {
-                        update_cpu_util(1);
-                        cpu_cores[i] = next;
-                        switch_tick = CPU_TICKS + quantum;
-                        if (next->state == READY) {
-                            next->state = RUNNING;
-                        }
-                        update_free_memory();
-                        next->in_memory = 1;
-                    } else {
-                        // Still can't allocate, put in backing store
-                        next->in_memory = 0;
-                        write_process_to_backing_store(next);
-                    }
-                }
-            }
-        }
-    }
-
-    // 2. Wake up sleeping processes and handle preemption
+    // *** FIX: WAKE UP SLEEPING PROCESSES ***
     for (int i = 0; i < num_cores; i++) {
         Process *p = cpu_cores[i];
         if (p && p->state == SLEEPING && CPU_TICKS >= p->sleep_until_tick) {
             p->state = RUNNING;
+            p->ticks_ran_in_quantum = 0; // Give it a fresh quantum upon waking
         }
+    }
 
-        // Preempt if quantum expired
-        if (p && p->state == RUNNING && CPU_TICKS >= switch_tick) {
+    // 1. Preempt processes that have used up their quantum
+    for (int i = 0; i < num_cores; i++) {
+        Process *p = cpu_cores[i];
+        if (p && p->state == RUNNING && p->ticks_ran_in_quantum >= quantum) {
             update_cpu_util(-1);
             cpu_cores[i] = NULL;
             p->state = READY;
@@ -367,34 +312,48 @@ void schedule_rr () {
         }
     }
 
-    // 3. Try to bring back ONE process from backing store (limit to prevent infinite loops)
-    if (CPU_TICKS % 10 == 0) {  // Only check every 10 ticks to reduce overhead
-        Process **backing_arr = NULL;
-        int backing_count = read_all_processes_from_backing_store(&backing_arr);
-        
-        if (backing_arr && backing_count > 0) {
-            // Try to load the first viable process
-            for (int i = 0; i < backing_count && i < 1; i++) {  // Limit to 1 per cycle
-                Process *p = backing_arr[i];
-                if (p && p->pid > 0 && try_allocate_memory(p, memory_head)) {
-                    p->in_memory = 1;
-                    p->state = READY;
-                    remove_process_from_backing_store(p->pid);
-                    enqueue_ready(p);
-                    break;  // Only load one per cycle
-                }
-            }
-            
-            // Clean up
-            for (int i = 0; i < backing_count; i++) {
-                if (backing_arr[i]) free(backing_arr[i]);
+    // 2. Assign ready processes to free cores
+    for (int i = 0; i < num_cores; i++) {
+        if (cpu_cores[i] == NULL) {
+            Process *next = dequeue_ready();
+            if (!next) continue; // No processes in ready queue
+
+            if (try_allocate_memory(next, memory_head)) {
+                // Success: schedule it
+                update_cpu_util(1);
+                cpu_cores[i] = next;
+                next->state = RUNNING;
+                next->in_memory = 1;
+                next->ticks_ran_in_quantum = 0; // Reset the process's personal tick counter
+                update_free_memory();
+            } else {
+                // Failure: move to backing store
+                write_process_to_backing_store(next);
             }
         }
-        if (backing_arr) free(backing_arr);
+    }
+
+    // 3. Periodically try to load a process from the backing store
+    if (CPU_TICKS % 100 == 0) { // Check every 100 ticks to reduce I/O overhead
+        Process *swapped_in = read_first_process_from_backing_store();
+        if (swapped_in) {
+            if (try_allocate_memory(swapped_in, memory_head)) {
+                remove_first_process_from_backing_store();
+                swapped_in->in_memory = 1;
+                enqueue_ready(swapped_in);
+                update_free_memory();
+            } else {
+                // Couldn't load, free the struct we read into memory
+                if(swapped_in->instructions) free(swapped_in->instructions);
+                if(swapped_in->variables) free(swapped_in->variables);
+                free(swapped_in);
+            }
+        }
     }
 
     LeaveCriticalSection(&cpu_cores_cs);
 }
+
 
 // main scheduler loop
 DWORD WINAPI scheduler_loop(LPVOID lpParam) {
@@ -454,54 +413,26 @@ DWORD WINAPI core_loop(LPVOID lpParam) {
     while (scheduler_running) {
         EnterCriticalSection(&cpu_cores_cs);
         Process *p = cpu_cores[core_id];
-
-        // Only print and fetch state while holding the lock
         int should_execute = (p && p->state == RUNNING);
         LeaveCriticalSection(&cpu_cores_cs);
 
-
         if (should_execute) {
             execute_instruction(p, config);
-            
-            EnterCriticalSection(&cpu_cores_cs);
-            LeaveCriticalSection(&cpu_cores_cs);
-            if (config.delay_per_exec > 0) {
-                busy_wait_ticks(config.delay_per_exec);
-            }
+            p->ticks_ran_in_quantum++; // Increment the process's own tick counter
         }
 
+        // This part handles finishing a process
         EnterCriticalSection(&cpu_cores_cs);
         p = cpu_cores[core_id];
         if (p && p->program_counter >= p->num_inst && p->for_depth == 0) {
-                        p->state = FINISHED;
+            p->state = FINISHED;
             add_finished_process(p);
             free_process_memory(p, &memory_head);
             update_free_memory();
             cpu_cores[core_id] = NULL;
             p = NULL;
         }
-
         LeaveCriticalSection(&cpu_cores_cs);
-// i asked my best friend copilot if this section had to be changed, just a thought maybe for the problems we had. retard
-/*         if (should_execute) {
-    execute_instruction(p, config);
-
-    EnterCriticalSection(&cpu_cores_cs);
-    // Check for finish immediately after execution
-    p = cpu_cores[core_id];
-    if (p && p->program_counter >= p->num_inst && p->state != FINISHED) {
-        p->state = FINISHED;
-        add_finished_process(p);
-        memory = free_process_memory(p, &memory_head);
-        cpu_cores[core_id] = NULL;
-        p = NULL;
-    }
-    LeaveCriticalSection(&cpu_cores_cs);
-
-    if (config.delay_per_exec > 0) {
-        busy_wait_ticks(config.delay_per_exec);
-    }
-} */
     }
     return 0;
 }

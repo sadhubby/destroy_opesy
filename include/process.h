@@ -94,7 +94,8 @@ typedef struct{
     uint64_t memory_allocation;
     uint64_t mem_base;
     uint64_t mem_limit;
-
+    uint32_t ticks_ran_in_quantum;
+    
 } Process;
 
 Variable *get_variable(Process *p, const char *name);

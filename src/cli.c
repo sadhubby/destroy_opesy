@@ -7,7 +7,7 @@
 #include "scheduler.h"
 #include "process.h"
 #include "memory.h"
-
+#include "backing_store.h"
 // global variables
 static bool initialized = false;
 static bool running = true;
@@ -92,6 +92,9 @@ void runCLI() {
         }
         else if (strcmp(command, "vmstat") == 0) {
             printf("vmstat\n");
+        }
+        else if (strcmp(command, "backing-list") == 0) {
+            print_backing_store_contents();
         }
         // unknown command
         else {
