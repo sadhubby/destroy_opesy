@@ -74,6 +74,7 @@ void runCLI() {
         }
         // scheduler-start
         else if (strcmp(command, "scheduler-start") == 0) {
+            remove("csopesy-backing-store.txt");
             init_ready_queue();
             init_cpu_cores(config.num_cpu);
             start_scheduler(config);

@@ -27,7 +27,7 @@ void write_process_to_backing_store(Process *p) {
     }
 
     fclose(fp);
-    printf("[DEBUG] Process %s (PID: %d) moved to backing store.\n", p->name, p->pid);
+    // printf("[DEBUG] Process %s (PID: %d) moved to backing store.\n", p->name, p->pid);
 }
 
 // Reads the FIRST process from the backing store.
@@ -78,38 +78,63 @@ Process* read_first_process_from_backing_store() {
 
 // Removes the FIRST process from the backing store by rewriting the file without it.
 void remove_first_process_from_backing_store() {
-    FILE *orig_fp = fopen(BACKING_STORE_FILENAME, "rb");
-    if (!orig_fp) return;
+    FILE *fp = fopen(BACKING_STORE_FILENAME, "rb");
+    if (!fp) {
+        return; // File doesn't exist
+    }
 
-    // Create a temporary file
-    FILE *temp_fp = fopen("csopesy-backing-store.tmp", "wb");
-    if (!temp_fp) {
-        fclose(orig_fp);
+    // Read and skip the first process
+    Process first_process;
+    if (fread(&first_process, sizeof(Process), 1, fp) != 1) {
+        fclose(fp);
+        return; // Empty file or read error
+    }
+
+    // Validate and skip the first process's data
+    if (first_process.num_inst < 0 || first_process.num_inst > 1000000 || 
+        first_process.num_var < 0 || first_process.num_var > 1000000) {
+        fclose(fp);
+        return; // Corrupt data
+    }
+
+    long first_data_size = sizeof(Instruction) * first_process.num_inst + 
+                          sizeof(Variable) * first_process.num_var;
+    if (fseek(fp, first_data_size, SEEK_CUR) != 0) {
+        fclose(fp);
+        return; // Seek error
+    }
+
+    // Read the rest of the file into memory
+    fseek(fp, 0, SEEK_END);
+    long file_size = ftell(fp);
+    long current_pos = sizeof(Process) + first_data_size;
+    long remaining_size = file_size - current_pos;
+
+    if (remaining_size <= 0) {
+        // No more processes, just delete the file
+        fclose(fp);
+        remove(BACKING_STORE_FILENAME);
         return;
     }
 
-    // Seek past the first process in the original file
-    Process temp_proc;
-    if (fread(&temp_proc, sizeof(Process), 1, orig_fp) == 1) {
-        long offset = sizeof(Instruction) * temp_proc.num_inst + sizeof(Variable) * temp_proc.num_var;
-        fseek(orig_fp, offset, SEEK_CUR);
-
-        // Copy the rest of the original file to the temp file
-        char buffer[1024];
-        size_t bytes_read;
-        while ((bytes_read = fread(buffer, 1, sizeof(buffer), orig_fp)) > 0) {
-            fwrite(buffer, 1, bytes_read, temp_fp);
-        }
+    fseek(fp, current_pos, SEEK_SET);
+    char *buffer = malloc(remaining_size);
+    if (!buffer) {
+        fclose(fp);
+        return; // Memory allocation failed
     }
 
-    fclose(orig_fp);
-    fclose(temp_fp);
+    size_t bytes_read = fread(buffer, 1, remaining_size, fp);
+    fclose(fp);
 
-    // Replace the original file with the temporary one
-    remove(BACKING_STORE_FILENAME);
-    rename("csopesy-backing-store.tmp", BACKING_STORE_FILENAME);
-    printf("[DEBUG] First process removed from backing store.\n");
+    // Rewrite the file with remaining processes
+    fp = fopen(BACKING_STORE_FILENAME, "wb");
+    if (fp) {
+        fwrite(buffer, 1, bytes_read, fp);
+        fclose(fp);
+    }
 
+    free(buffer);
 }
 
 void print_backing_store_contents() {
@@ -125,6 +150,13 @@ void print_backing_store_contents() {
 
     // Read each process struct one by one
     while (fread(&p, sizeof(Process), 1, fp) == 1) {
+        // Defensive: check for obviously invalid values
+        if (p.num_inst < 0 || p.num_inst > 1000000 || p.num_var < 0 || p.num_var > 1000000) {
+            printf("  [%d] Corrupt process entry detected (num_inst: %d, num_var: %d). Aborting print.\n", 
+                   index, p.num_inst, p.num_var);
+            break;
+        }
+
         printf("[%d] PID: %d, Name: P%s, Instructions: %d, Variables: %d\n",
                index, p.pid, p.name, p.num_inst, p.num_var);
 
