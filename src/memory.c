@@ -5,9 +5,40 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <string.h>
+
+#define MAX_MEMORY_SIZE 16384  // 16 KB
+#define UINT16_MAX_VAL 65535
+
+static uint16_t memory_space[MAX_MEMORY_SIZE / 2];
 
 Memory memory;
 MemoryBlock* memory_head;
+
+int is_valid_memory_address(uint32_t address) {
+    return (address % 2 == 0) && (address < MAX_MEMORY_SIZE);
+}
+
+int memory_write(uint32_t address, uint16_t value, Process *p) {
+    if (!is_valid_memory_address(address)) {
+        printf("[ACCESS VIOLATION] Process %d tried to write to 0x%X\n", p->pid, address);
+        p->state = TERMINATED;
+        return 0;
+    }
+    memory_space[address / 2] = value;
+    return 1;
+}
+
+uint16_t memory_read(uint32_t address, Process *p, int *success) {
+    if (!is_valid_memory_address(address)) {
+        printf("[ACCESS VIOLATION] Process %d tried to read from 0x%X\n", p->pid, address);
+        p->state = TERMINATED;
+        *success = 0;
+        return 0;
+    }
+    *success = 1;
+    return memory_space[address / 2];
+}
 
 void init_memory(uint64_t total_memory, uint64_t mem_per_frame, uint64_t max_mem_per_proc, uint64_t min_mem_per_proc) {
     memory.total_memory = total_memory;
