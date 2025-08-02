@@ -165,5 +165,6 @@ void initialize(){
     printf("  min-mem-per-proc: %d\n", config.min_mem_per_proc);
     init_memory(config.max_overall_mem, config.mem_per_frame, config.max_mem_per_proc, config.min_mem_per_proc);
     
+    memory_head = init_memory_block(config.max_overall_mem);
     initialized = true;
 }

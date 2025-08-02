@@ -3,23 +3,19 @@
 #include <string.h>
 #include "process.h"
 #include "backing_store.h"
-#include <windows.h>
 
 #define BACKING_STORE_FILENAME "csopesy-backing-store.txt"
 
 // Writes a process and its associated data to the backing store.
 void write_process_to_backing_store(Process *p) {
     if (!p) return;
-    
-    EnterCriticalSection(&backing_store_cs); // Protect file access
     FILE *fp = fopen(BACKING_STORE_FILENAME, "ab"); // Append Binary
     if (!fp) {
         perror("Failed to open backing store for writing");
-        LeaveCriticalSection(&backing_store_cs);
         return;
     }
 
-    // 1. Write the main Process struct
+    // 1. Write the main Process struct (without its pointer data)
     fwrite(p, sizeof(Process), 1, fp);
     // 2. Write the instructions array
     if (p->num_inst > 0 && p->instructions) {
@@ -31,12 +27,7 @@ void write_process_to_backing_store(Process *p) {
     }
 
     fclose(fp);
-    LeaveCriticalSection(&backing_store_cs);
-
-    // 4. Free the in-memory copy of the process that was just written
-    if (p->instructions) free(p->instructions);
-    if (p->variables) free(p->variables);
-    free(p);
+    // printf("[DEBUG] Process %s (PID: %d) moved to backing store.\n", p->name, p->pid);
 }
 
 // Reads the FIRST process from the backing store.
@@ -57,11 +48,23 @@ Process* read_first_process_from_backing_store() {
     // 2. Allocate memory and read instructions
     if (p->num_inst > 0) {
         p->instructions = malloc(sizeof(Instruction) * p->num_inst);
-        if (!p->instructions || fread(p->instructions, sizeof(Instruction), p->num_inst, fp) != p->num_inst) {
+        if (!p->instructions) {
+            free(p);
+            fclose(fp);
+            return NULL;
+        }
+        
+        // Read the instructions
+        if (fread(p->instructions, sizeof(Instruction), p->num_inst, fp) != p->num_inst) {
             free(p->instructions);
             free(p);
             fclose(fp);
             return NULL;
+        }
+        
+        // Fix any potential dangling pointers in sub_instructions
+        for (int i = 0; i < p->num_inst; i++) {
+            p->instructions[i].sub_instructions = NULL;
         }
     } else {
         p->instructions = NULL;
@@ -69,8 +72,16 @@ Process* read_first_process_from_backing_store() {
 
     // 3. Allocate memory and read variables
     if (p->num_var > 0) {
-        p->variables = malloc(sizeof(Variable) * p->num_var);
-        if (!p->variables || fread(p->variables, sizeof(Variable), p->num_var, fp) != p->num_var) {
+        p->variables = malloc(sizeof(Variable) * p->variables_capacity);
+        if (!p->variables) {
+            free(p->instructions);
+            free(p);
+            fclose(fp);
+            return NULL;
+        }
+        
+        // Read the variables
+        if (fread(p->variables, sizeof(Variable), p->num_var, fp) != p->num_var) {
             free(p->instructions);
             free(p->variables);
             free(p);
@@ -78,8 +89,25 @@ Process* read_first_process_from_backing_store() {
             return NULL;
         }
     } else {
-        p->variables = NULL;
+        // FIX: A process must always have a valid, non-NULL variables array,
+        // even if it's empty, to match the behavior of generate_dummy_process.
+        int initial_capacity = p->variables_capacity > 0 ? p->variables_capacity : 8;
+        p->variables = (Variable *)calloc(initial_capacity, sizeof(Variable));
+        if (!p->variables) {
+            if(p->instructions) free(p->instructions);
+            free(p);
+            fclose(fp);
+            return NULL;
+        }
+        p->num_var = 0; // Ensure num_var is 0.
     }
+
+    // 4. Make sure other pointers are initialized correctly
+    p->logs = NULL;
+    p->num_logs = 0;
+    p->for_depth = 0;
+    p->in_memory = 0;
+    p->ticks_ran_in_quantum = 0;
 
     fclose(fp);
     return p;
