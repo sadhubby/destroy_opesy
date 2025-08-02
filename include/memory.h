@@ -11,6 +11,7 @@ typedef struct Memory {
     uint64_t mem_per_frame;
     uint64_t max_mem_per_proc;
     uint64_t min_mem_per_proc;
+    uint64_t used_memory;
     uint64_t free_memory;
     int num_processes_in_memory;
 } Memory;

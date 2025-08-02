@@ -84,6 +84,36 @@ MemoryBlock* init_memory_block(uint64_t total_memory) {
     return head;
 }
 
+void update_used_free_memory() {
+    // Allocate dynamic arrays for storing process info
+    int *temp_pids = malloc(sizeof(int) * num_processes);
+    uint64_t *temp_allocs = malloc(sizeof(uint64_t) * num_processes);
+    if (!temp_pids || !temp_allocs) {
+        fprintf(stderr, "Memory allocation failed\n");
+        free(temp_pids);
+        free(temp_allocs);
+        return;
+    }
+
+    int temp_count = 0;
+    uint64_t used_memory = 0;
+
+    // Collect memory allocations of active processes
+    for (int i = 0; i < num_processes; i++) {
+        Process *p = process_table[i];
+        if (p && (p->state == RUNNING || p->state == SLEEPING)) {
+            temp_pids[temp_count] = p->pid;
+            temp_allocs[temp_count] = p->memory_allocation;
+            used_memory += p->memory_allocation;
+            temp_count++;
+        }
+    }
+
+    memory.used_memory = used_memory;
+    memory.free_memory = memory.total_memory - used_memory;
+
+}
+
 void process_smi(int num_cores, Process **cpu_cores) {
 
     // Allocate dynamic arrays for storing process info
@@ -136,4 +166,7 @@ void process_smi(int num_cores, Process **cpu_cores) {
 
 void vmstat(Memory *mem, CPUStats *stats) {
     printf("%10d %4s %s\n", memory.total_memory, "B", "total memory");
+    update_used_free_memory();
+    printf("%10d %4s %s\n", memory.used_memory, "B", "used memory");
+    printf("%10d %4s %s\n", memory.free_memory, "B", "free memory");
 }
