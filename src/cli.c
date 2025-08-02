@@ -91,7 +91,7 @@ void runCLI() {
             process_smi(get_num_cores(), get_cpu_cores());
         }
         else if (strcmp(command, "vmstat") == 0) {
-            printf("vmstat\n");
+            vmstat(&memory, &stats);
         }
         // unknown command
         else {

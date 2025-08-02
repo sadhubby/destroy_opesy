@@ -1,6 +1,7 @@
 #include "process.h"
 #include "memory.h"
 #include "scheduler.h"
+#include "stats.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -133,4 +134,6 @@ void process_smi(int num_cores, Process **cpu_cores) {
 }
 
 
-// void vmstat(Memory *mem, CPUStats *stats);
+void vmstat(Memory *mem, CPUStats *stats) {
+    printf("%10d %4s %s\n", memory.total_memory, "B", "total memory");
+}

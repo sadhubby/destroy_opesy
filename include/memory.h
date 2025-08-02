@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "stats.h"
 #include "process.h"
 
 typedef struct Memory {
@@ -35,7 +36,7 @@ void merge_adjacent_free_blocks(MemoryBlock **head_ref);
 
 // vmstat and process-smi
 void process_smi(int num_cores, Process **cpu_cores);
-// void vmstat(Memory *mem, CPUStats *stats);
+void vmstat(Memory *mem, CPUStats *stats);
 
 int memory_write(uint32_t address, uint16_t value, Process *p);
 uint16_t memory_read(uint32_t address, Process *p, int *success);
