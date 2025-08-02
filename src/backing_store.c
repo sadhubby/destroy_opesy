@@ -3,19 +3,23 @@
 #include <string.h>
 #include "process.h"
 #include "backing_store.h"
+#include <windows.h>
 
 #define BACKING_STORE_FILENAME "csopesy-backing-store.txt"
 
 // Writes a process and its associated data to the backing store.
 void write_process_to_backing_store(Process *p) {
     if (!p) return;
+    
+    EnterCriticalSection(&backing_store_cs); // Protect file access
     FILE *fp = fopen(BACKING_STORE_FILENAME, "ab"); // Append Binary
     if (!fp) {
         perror("Failed to open backing store for writing");
+        LeaveCriticalSection(&backing_store_cs);
         return;
     }
 
-    // 1. Write the main Process struct (without its pointer data)
+    // 1. Write the main Process struct
     fwrite(p, sizeof(Process), 1, fp);
     // 2. Write the instructions array
     if (p->num_inst > 0 && p->instructions) {
@@ -27,7 +31,12 @@ void write_process_to_backing_store(Process *p) {
     }
 
     fclose(fp);
-    // printf("[DEBUG] Process %s (PID: %d) moved to backing store.\n", p->name, p->pid);
+    LeaveCriticalSection(&backing_store_cs);
+
+    // 4. Free the in-memory copy of the process that was just written
+    if (p->instructions) free(p->instructions);
+    if (p->variables) free(p->variables);
+    free(p);
 }
 
 // Reads the FIRST process from the backing store.

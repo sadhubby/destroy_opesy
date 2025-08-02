@@ -58,6 +58,7 @@ uint16_t resolve_value(Process *p, const char *arg, uint16_t fallback) {
 }
 
 void execute_instruction(Process *p, Config config) {
+    if (!p) return;
     Instruction *inst;
 
     //guard for out of bounds
