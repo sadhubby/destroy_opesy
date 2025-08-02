@@ -136,6 +136,26 @@ void execute_instruction(Process *p, Config config) {
             p->state = SLEEPING;
             p->sleep_until_tick = CPU_TICKS + inst->value;
         }
+        // read
+        case READ: {
+            uint32_t address = 0;
+            sscanf(inst->arg2, "%x", &address);
+            int success = 0;
+            uint16_t value = memory_read(address, p, &success);
+            if (success) {
+                Variable *v = get_variable(p, inst->arg1);
+                if (v) v->value = value;
+            }
+            break;
+        }
+        // writee
+        case WRITE: {
+            uint32_t address = 0;
+            sscanf(inst->arg1, "%x", &address);
+            uint16_t value = CLAMP_UINT16(inst->value);
+            memory_write(address, value, p);
+            break;
+        }
 
     }
 
@@ -310,6 +330,29 @@ Instruction parse_for(const char *args) {
 
     return inst;
 }
+// read
+Instruction parse_read(const char *args) {
+    Instruction inst = {0};
+    inst.type = READ;
+    char var[50], addr[50];
+    sscanf(args, "%49[^,],%49s", var, addr);
+    trim(var); trim(addr);
+    strcpy(inst.arg1, var);
+    strcpy(inst.arg2, addr);
+    return inst;
+}
+// write
+Instruction parse_write(const char *args) {
+    Instruction inst = {0};
+    inst.type = WRITE;
+    char addr[50];
+    int value;
+    sscanf(args, "%49[^,],%d", addr, &value);
+    trim(addr);
+    strcpy(inst.arg1, addr);
+    inst.value = value;
+    return inst;
+}
 
 // parse list of instructions
 int parse_instruction_list(const char *instrs, Instruction *out, int max_count) {
@@ -335,6 +378,11 @@ int parse_instruction_list(const char *instrs, Instruction *out, int max_count) 
                 out[count++] = parse_sleep(args);
             } else if (strcmp(cmd, "FOR") == 0) {
                 out[count++] = parse_for(args);
+            }
+            else if (strcmp(cmd, "READ") == 0) {
+                out[count++] = parse_read(args);
+            } else if (strcmp(cmd, "WRITE") == 0) {
+                out[count++] = parse_write(args);
             }
         }
         
@@ -440,6 +488,12 @@ void print_process_info(Process *p) {
                 break;
             case FOR:
                 printf("  %2d: FOR([...], %d)\n", i, inst->repeat_count);
+                break;
+            case READ:
+                printf("  %2d: READ(%s, %s)\n", i, inst->arg1, inst->arg2);
+                break;
+            case WRITE:
+                printf("  %2d: WRITE(%s, %d)\n", i, inst->arg1, inst->value);
                 break;
             default:
                 printf("  %2d: UNKNOWN\n", i);
