@@ -103,6 +103,7 @@ void free_process_memory(Process *p, MemoryBlock **head_ref) {
 
     // Recalculate memory stats
     update_free_memory();
+    stats.num_paged_out++;
 }
 
 MemoryBlock* init_memory_block(uint64_t total_memory) {
