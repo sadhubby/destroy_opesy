@@ -120,6 +120,60 @@ void screen_resume(const char *name) {
     printf("Process %s not found.\n", name);
 }
 
+void screen_create_with_code(const char *command_args) {
+    char process_name[50];
+    int memory_size;
+    char instructions[1024];
+
+    // instruction format-  <process_name> <memory_size> "<instructions>"
+    if (sscanf(command_args, "%s %d \"%[^\"]\"", process_name, &memory_size, instructions) != 3) {
+        printColor(yellow, "invalid command format\n");
+        return;
+    }
+
+    // count the number of instructions
+    int count = 1;
+    for (int i = 0; instructions[i]; i++) {
+        if (instructions[i] == ';') count++;
+    }
+
+    if (count < 1 || count > 50) {
+        printColor(yellow, "invalid command\n");
+        return;
+    }
+
+    // check for duplicate pname
+    for (int i = 0; i < process_count; i++) {
+        if (strcmp(process_table[i]->name, process_name) == 0) {
+            char buffer[150];
+            snprintf(buffer, sizeof(buffer), "Screen session '%s' already exists. Use -r to resume.\n", process_name);
+            printColor(yellow, buffer);
+            return;
+        }
+    }
+
+    // allocate and create the process
+    Process *p = malloc(sizeof(Process));
+    if (!p) {
+        printColor(yellow, "Failed to allocate memory for new process.\n");
+        return;
+    }
+
+    strncpy(p->name, process_name, sizeof(p->name) - 1);
+    p->name[sizeof(p->name) - 1] = '\0';
+    p->pid = process_count + 1;
+    p->program_counter = 0;
+    p->last_exec_time = time(NULL);
+    p->code = strdup(instructions); // assumes `char *code;` is in Process struct
+    p->memory_size = memory_size;
+    p->num_inst = count;
+
+    add_process(p);
+
+    printf("Created process '%s' with code:\n%s\n", process_name, instructions);
+}
+
+
 void screen_list(int num_cores, Process **cpu_cores, int finished_count, Process **finished_processes) {
     int used = 0;
 
