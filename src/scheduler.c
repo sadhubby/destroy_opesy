@@ -215,7 +215,6 @@ void schedule_rr () {
 DWORD WINAPI scheduler_loop(LPVOID lpParam) {
     while (scheduler_running) {
         CPU_TICKS++;
-        stats.total_ticks++;
         Sleep(1);
 
         // Generate a new process
@@ -248,6 +247,8 @@ DWORD WINAPI scheduler_loop(LPVOID lpParam) {
         } else {
             stats.active_ticks++;
         }
+
+        stats.total_ticks++;
 
         // print_ready_queue();
 

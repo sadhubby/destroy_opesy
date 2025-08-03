@@ -22,7 +22,7 @@ int is_valid_memory_address(uint32_t address) {
 int memory_write(uint32_t address, uint16_t value, Process *p) {
     if (!is_valid_memory_address(address)) {
         printf("[ACCESS VIOLATION] Process %d tried to write to 0x%X\n", p->pid, address);
-        p->state = TERMINATED;
+        //p->state = TERMINATED;
         return 0;
     }
     memory_space[address / 2] = value;
@@ -32,7 +32,7 @@ int memory_write(uint32_t address, uint16_t value, Process *p) {
 uint16_t memory_read(uint32_t address, Process *p, int *success) {
     if (!is_valid_memory_address(address)) {
         printf("[ACCESS VIOLATION] Process %d tried to read from 0x%X\n", p->pid, address);
-        p->state = TERMINATED;
+        //p->state = TERMINATED;
         *success = 0;
         return 0;
     }
@@ -200,4 +200,7 @@ void vmstat(Memory *mem, CPUStats *stats) {
     update_used_free_memory();
     printf("%10d %4s %s\n", memory.used_memory, "B", "used memory");
     printf("%10d %4s %s\n", memory.free_memory, "B", "free memory");
+    printf("%10d %4s %s\n", stats->total_ticks, "B", "total ticks");
+    printf("%10d %4s %s\n", stats->active_ticks, "B", "active ticks");
+    printf("%10d %4s %s\n", stats->idle_ticks, "B", "idle ticks");
 }
