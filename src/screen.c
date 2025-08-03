@@ -151,26 +151,40 @@ void screen_create_with_code(const char *command_args) {
             return;
         }
     }
-
-    // allocate and create the process
     Process *p = malloc(sizeof(Process));
     if (!p) {
         printColor(yellow, "Failed to allocate memory for new process.\n");
         return;
     }
-
+    
+    memset(p, 0, sizeof(Process));
     strncpy(p->name, process_name, sizeof(p->name) - 1);
-    p->name[sizeof(p->name) - 1] = '\0';
     p->pid = process_count + 1;
     p->program_counter = 0;
     p->last_exec_time = time(NULL);
-    p->code = strdup(instructions); // assumes `char *code;` is in Process struct
-    p->memory_size = memory_size;
-    p->num_inst = count;
-
+    
+    // Allocate and parse instructions
+    p->instructions = malloc(sizeof(Instruction) * count);
+    if (!p->instructions) {
+        printColor(yellow, "Failed to allocate instructions.\n");
+        free(p);
+        return;
+    }
+    
+    int parsed = parse_instruction_list(instructions, p->instructions, count);
+    if (parsed <= 0) {
+        printColor(yellow, "Instruction parsing failed.\n");
+        free(p->instructions);
+        free(p);
+        return;
+    }
+    
+    p->num_inst = parsed;
+    p->memory_allocation = memory_size;
+    
     add_process(p);
+    printf("Created process '%s' with %d instructions and %dB memory.\n", process_name, parsed, memory_size);
 
-    printf("Created process '%s' with code:\n%s\n", process_name, instructions);
 }
 
 
