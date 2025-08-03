@@ -15,5 +15,6 @@ typedef struct{
 void screen_start(const char *name);
 void screen_resume(const char *name);
 void screen_list(int num_cores, Process **cpu_cores, int finished_count, Process **finished_processes);
+void screen_create_with_code(const char *command_args);
 
 #endif
