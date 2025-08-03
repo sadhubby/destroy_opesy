@@ -201,6 +201,8 @@ void vmstat(Memory *mem, CPUStats *stats) {
     printf("%10d %4s %s\n", memory.used_memory, "B", "used memory");
     printf("%10d %4s %s\n", memory.free_memory, "B", "free memory");
     printf("%10d %4s %s\n", stats->total_ticks, "B", "total ticks");
-    printf("%10d %4s %s\n", stats->active_ticks, "B", "active ticks");
-    printf("%10d %4s %s\n", stats->idle_ticks, "B", "idle ticks");
+    printf("%10d %4s %s\n", stats->active_ticks, "", "active ticks");
+    printf("%10d %4s %s\n", stats->idle_ticks, "", "idle ticks");
+    printf("%10d %4s %s\n", stats->num_paged_in, "", "num paged in");
+    printf("%10d %4s %s\n", stats->num_paged_out, "", "num paged out");
 }

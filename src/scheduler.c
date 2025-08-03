@@ -421,6 +421,7 @@ bool try_allocate_memory(Process* process, MemoryBlock* memory_blocks_head) {
                 curr->next = new_block;
             }
 
+            stats.num_paged_in++;
             return true;
         }
 
