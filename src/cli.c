@@ -85,7 +85,6 @@ void runCLI() {
         }
         // scheduler-start
         else if (strcmp(command, "scheduler-start") == 0) {
-            remove("csopesy-backing-store.txt");
             init_ready_queue();
             init_cpu_cores(config.num_cpu);
             start_scheduler(config);
@@ -177,5 +176,6 @@ void initialize(){
     init_memory(config.max_overall_mem, config.mem_per_frame, config.max_mem_per_proc, config.min_mem_per_proc);
     
     memory_head = init_memory_block(config.max_overall_mem);
+    init_backing_store();
     initialized = true;
 }

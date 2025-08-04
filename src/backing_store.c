@@ -6,10 +6,33 @@
 
 #define BACKING_STORE_FILENAME "csopesy-backing-store.txt"
 
+// Initialize the backing store file
+void init_backing_store() {
+    FILE *fp = fopen(BACKING_STORE_FILENAME, "ab");  // Open in append mode to create if not exists
+    if (fp) {
+        fclose(fp);
+    } else {
+        perror("Failed to initialize backing store");
+    }
+}
+
+// Ensure the backing store exists before any operation
+static FILE* ensure_backing_store(const char* mode) {
+    FILE *fp = fopen(BACKING_STORE_FILENAME, mode);
+    if (!fp && strcmp(mode, "rb") == 0) {  // If reading and file doesn't exist
+        fp = fopen(BACKING_STORE_FILENAME, "wb");  // Create it
+        if (fp) {
+            fclose(fp);
+            fp = fopen(BACKING_STORE_FILENAME, mode);  // Reopen in original mode
+        }
+    }
+    return fp;
+}
+
 // Writes a process and its associated data to the backing store.
 void write_process_to_backing_store(Process *p) {
     if (!p) return;
-    FILE *fp = fopen(BACKING_STORE_FILENAME, "ab"); // Append Binary
+    FILE *fp = ensure_backing_store("ab"); // Append Binary
     if (!fp) {
         perror("Failed to open backing store for writing");
         return;
@@ -32,7 +55,7 @@ void write_process_to_backing_store(Process *p) {
 
 // Reads the FIRST process from the backing store.
 Process* read_first_process_from_backing_store() {
-    FILE *fp = fopen(BACKING_STORE_FILENAME, "rb");
+    FILE *fp = ensure_backing_store("rb");
     if (!fp) return NULL;
 
     Process *p = malloc(sizeof(Process));
@@ -148,9 +171,10 @@ void remove_first_process_from_backing_store() {
     long remaining_size = file_size - current_pos;
 
     if (remaining_size <= 0) {
-        // No more processes, just delete the file
+        // No more processes, but keep the empty file
         fclose(fp);
-        remove(BACKING_STORE_FILENAME);
+        fp = ensure_backing_store("wb");  // Truncate file but keep it
+        if (fp) fclose(fp);
         return;
     }
 
@@ -175,9 +199,9 @@ void remove_first_process_from_backing_store() {
 }
 
 void print_backing_store_contents() {
-    FILE *fp = fopen(BACKING_STORE_FILENAME, "rb");
+    FILE *fp = ensure_backing_store("rb");
     if (!fp) {
-        printf("Backing store is empty or does not exist.\n");
+        printf("Error accessing backing store.\n");
         return;
     }
 
