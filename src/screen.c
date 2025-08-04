@@ -29,7 +29,12 @@ void screen_process_smi(Process *p) {
 }
 
 // screen -s
-void screen_start(const char *name) {
+void screen_start(const char *name, int memory_size) {
+
+    if (!is_valid_memory_size(memory_size)) {
+        printColor(yellow, "Invalid memory size. Must be a power of 2 between 64 and 65536.\n");
+        return;
+    }
 
     // check for duplicate
     for (int i = 0; i < process_count; i++) {
@@ -129,8 +134,7 @@ void screen_create_with_code(const char *command_args) {
     if (sscanf(command_args, "%s %d \"%[^\"]\"", process_name, &memory_size, instructions) != 3) {
         printColor(yellow, "invalid command format\n");
         return;
-    }
-
+    } 
     // count the number of instructions
     int count = 1;
     for (int i = 0; instructions[i]; i++) {
@@ -235,4 +239,11 @@ void screen_list(int num_cores, Process **cpu_cores, int finished_count, Process
             printf("P%-16s %-24s %-10s     %d/%d\n", p->name, timebuf, "Finished", p->program_counter, p->num_inst);
         }
     }
+}
+
+bool is_valid_memory_size(int memory_size){
+    if(memory_size < 64 || memory_size > 65536){
+        return false;
+    }
+    return (memory_size & (memory_size - 1)) == 0; 
 }

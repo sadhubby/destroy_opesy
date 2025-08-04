@@ -62,7 +62,14 @@ void runCLI() {
         }
         // screen -s
         else if (strncmp(command, "screen -s ", 10) == 0) {
-            screen_start(command + 10);
+            char pname[64];
+            int memsize;
+            if (sscanf(command + 10, "%63s %d", pname, &memsize) == 2) {
+                screen_start(pname, memsize);
+            } else {
+                printColor(yellow, "Usage: screen -s <process_name> <memory_size>\n");
+                printColor(yellow, "Memory size must be a power of 2 between 64 and 65536 bytes.\n");
+            }
         }
         // screen -r
         else if (strncmp(command, "screen -r ", 10) == 0) {
