@@ -53,6 +53,7 @@ int handle_page_fault(Process *p, uint32_t virtual_address) {
     uint32_t page_number = offset / memory.mem_per_frame;
 
     if (page_number >= p->num_pages) {
+        printf("%d %d\n", page_number, p->num_pages);
         printf("[ACCESS VIOLATION] Invalid page access by P%d at 0x%X\n", p->pid, virtual_address);
         p->state = FINISHED;
         return 0;
@@ -236,8 +237,8 @@ void update_used_free_memory() {
 void process_smi(int num_cores, Process **cpu_cores) {
 
     // Allocate dynamic arrays for storing process info
-    int *temp_pids = malloc(sizeof(int) * num_processes);
-    uint64_t *temp_allocs = malloc(sizeof(uint64_t) * num_processes);
+    int *temp_pids = malloc(sizeof(int) * num_cores);  // Only need space for cores
+    uint64_t *temp_allocs = malloc(sizeof(uint64_t) * num_cores);
     if (!temp_pids || !temp_allocs) {
         fprintf(stderr, "Memory allocation failed in process_smi()\n");
         free(temp_pids);
@@ -248,10 +249,10 @@ void process_smi(int num_cores, Process **cpu_cores) {
     int temp_count = 0;
     uint64_t used_memory = 0;
 
-    // Collect memory allocations of active processes
-    for (int i = 0; i < num_processes; i++) {
-        Process *p = process_table[i];
-        if (p && (p->state == RUNNING || p->state == SLEEPING)) {
+    // Only collect processes that are currently on CPU cores
+    for (int i = 0; i < num_cores; i++) {
+        Process *p = cpu_cores[i];
+        if (p) {
             temp_pids[temp_count] = p->pid;
             temp_allocs[temp_count] = p->memory_allocation;
             used_memory += p->memory_allocation;
@@ -284,10 +285,10 @@ void process_smi(int num_cores, Process **cpu_cores) {
 
 
 void vmstat(Memory *mem, CPUStats *stats) {
-    printf("%10d %4s %s\n", memory.total_memory, "B", "total memory");
+    printf("%10lld %4s %s\n", memory.total_memory, "B", "total memory");
     update_used_free_memory();
-    printf("%10d %4s %s\n", memory.used_memory, "B", "used memory");
-    printf("%10d %4s %s\n", memory.free_memory, "B", "free memory");
+    printf("%10lld %4s %s\n", memory.used_memory, "B", "used memory");
+    printf("%10lld %4s %s\n", memory.free_memory, "B", "free memory");
     printf("%10d %4s %s\n", stats->total_ticks, "B", "total ticks");
     printf("%10d %4s %s\n", stats->active_ticks, "", "active ticks");
     printf("%10d %4s %s\n", stats->idle_ticks, "", "idle ticks");

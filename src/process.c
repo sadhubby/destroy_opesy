@@ -143,25 +143,25 @@ void execute_instruction(Process *p, Config config) {
             p->sleep_until_tick = CPU_TICKS + inst->value;
         }
         // read
-        case READ: {
-            uint32_t address = 0;
-            sscanf(inst->arg2, "%x", &address);
-            int success = 0;
-            uint16_t value = memory_read(address, p, &success);
-            if (success) {
-                Variable *v = get_variable(p, inst->arg1);
-                if (v) v->value = value;
-            }
-            break;
-        }
-        // writee
-        case WRITE: {
-            uint32_t address = 0;
-            sscanf(inst->arg1, "%x", &address);
-            uint16_t value = CLAMP_UINT16(inst->value);
-            memory_write(address, value, p);
-            break;
-        }
+        // case READ: {
+        //     uint32_t address = 0;
+        //     sscanf(inst->arg2, "%x", &address);
+        //     int success = 0;
+        //     uint16_t value = memory_read(address, p, &success);
+        //     if (success) {
+        //         Variable *v = get_variable(p, inst->arg1);
+        //         if (v) v->value = value;
+        //     }
+        //     break;
+        // }
+        // // writee
+        // case WRITE: {
+        //     uint32_t address = 0;
+        //     sscanf(inst->arg1, "%x", &address);
+        //     uint16_t value = CLAMP_UINT16(inst->value);
+        //     memory_write(address, value, p);
+        //     break;
+        // }
 
     }
 
@@ -494,6 +494,8 @@ Process *generate_dummy_process(Config config) {
     p->for_depth = 0;  // *** FIX: Initialize for_depth ***
     p->ticks_ran_in_quantum = 0;  // *** FIX: Initialize quantum ticks ***
     p->last_exec_time = 0;  // *** FIX: Initialize to 0, will be set when scheduled ***
+    p->num_pages = memory_allocation / config.mem_per_frame;
+    p->page_table = (PageTableEntry *)calloc(p->num_pages, sizeof(PageTableEntry));
 
     // *** FIX: Safer memory allocation with error checking ***
     p->variables = (Variable *)calloc(p->variables_capacity, sizeof(Variable));
