@@ -44,7 +44,7 @@ typedef struct Instruction {
     char arg2[50];
     char arg3[50];
     uint16_t value;
-    uint8_t repeat_count; 
+    uint8_t repeat_count;
 
     struct Instruction *sub_instructions;
     int sub_instruction_count;
@@ -64,6 +64,12 @@ typedef struct {
     Instruction *sub_instructions;
     int sub_instruction_count;
 } ForContext;
+
+// page table entry
+typedef struct {
+    int frame_number;
+    bool valid;
+} PageTableEntry;
 
 typedef struct{
 
@@ -97,6 +103,9 @@ typedef struct{
     uint64_t mem_base;
     uint64_t mem_limit;
     uint32_t ticks_ran_in_quantum;
+
+    PageTableEntry *page_table;
+    int num_pages;
     
 } Process;
 
