@@ -86,25 +86,31 @@ void execute_instruction(Process *p, Config config) {
 
     switch (inst->type) {
         // declare
-        case DECLARE: {
+       case DECLARE: {
             Variable *v = get_variable(p, inst->arg1);
-            v->value = CLAMP_UINT16(inst->value);
+            if (v) v->value = CLAMP_UINT16(inst->value);
             break;
         }
         // add
         case ADD: {
-            Variable *dest = get_variable(p, inst->arg1);
-            uint16_t v2 = resolve_value(p, inst->arg2, inst->value);
-            uint16_t v3 = resolve_value(p, inst->arg3, inst->value);
-            dest->value = CLAMP_UINT16(v2 + v3);
+            // FIX: Resolve values FIRST to avoid realloc invalidating the dest pointer.
+            uint16_t v2 = resolve_value(p, inst->arg2, 0);
+            uint16_t v3 = resolve_value(p, inst->arg3, 0);
+            Variable *dest = get_variable(p, inst->arg1); // Get dest pointer LAST.
+            if (dest) {
+                dest->value = CLAMP_UINT16(v2 + v3);
+            }
             break;
         }
         // subtract
         case SUBTRACT: {
-            Variable *dest = get_variable(p, inst->arg1);
-            uint16_t v2 = resolve_value(p, inst->arg2, inst->value);
-            uint16_t v3 = resolve_value(p, inst->arg3, inst->value);
-            dest->value = CLAMP_UINT16(v2 - v3);
+            // FIX: Resolve values FIRST to avoid realloc invalidating the dest pointer.
+            uint16_t v2 = resolve_value(p, inst->arg2, 0);
+            uint16_t v3 = resolve_value(p, inst->arg3, 0);
+            Variable *dest = get_variable(p, inst->arg1); // Get dest pointer LAST.
+            if (dest) {
+                dest->value = CLAMP_UINT16(v2 - v3);
+            }
             break;
         }
         // print
@@ -395,39 +401,136 @@ int parse_instruction_list(const char *instrs, Instruction *out, int max_count) 
 static int dummy_pid = 1;
 
 // Generate a dummy process for testing or batch creation
+// Process *generate_dummy_process(Config config) {
+//     int min_ins = config.min_ins > 1 ? config.min_ins : 1;
+//     int max_ins = config.max_ins > min_ins ? config.max_ins : min_ins /* + 1 */; //+1 was commented
+//     int num_inst = min_ins + rand() % (max_ins - min_ins + 1);
+//     int memory_allocation = config.min_mem_per_proc + rand() % (config.max_mem_per_proc - config.min_mem_per_proc + 1);
+
+//     Process *p = (Process *)calloc(1, sizeof(Process));
+//     snprintf(p->name, MAX_PROCESS_NAME, "%d", dummy_pid);
+//     p->pid = dummy_pid++;
+//     p->state = READY;
+//     p->program_counter = 0;
+//     p->num_var = 0;
+//     p->num_inst = num_inst;
+//     p->variables_capacity = 8;
+//     p->variables = (Variable *)calloc(p->variables_capacity, sizeof(Variable));
+//     p->instructions = (Instruction *)calloc(num_inst, sizeof(Instruction));
+//     p->memory_allocation = memory_allocation;
+//     p->in_memory = 0;
+
+//     // Seed random
+//     static int seeded = 0;
+//     if (!seeded) { srand((unsigned int)time(NULL)); seeded = 1; }
+
+//     // Generate random instructions
+//     for (int i = 0; i < num_inst; i++) {
+//         int t = rand() % 5; // 0=DECLARE, 1=ADD, 2=SUBTRACT, 3=PRINT, 4=SLEEP
+//         char buf[64];
+//         int v2_idx = (i > 0) ? rand() % i : 0;
+//         int v3_is_var = rand() % 2;
+//         int v3_idx = (i > 0) ? rand() % i : 0;
+//         int v3_val = rand() % 100;
+        
+//         // ensure third argument for add and subtract
+//         char v3_buf[16];
+//         if (v3_is_var && i > 0) {
+//             snprintf(v3_buf, sizeof(v3_buf), "v%d", v3_idx);
+//         } else {
+//             snprintf(v3_buf, sizeof(v3_buf), "%d", v3_val);
+//         }
+
+//         // parse respective operations
+//         switch (t) {
+//             case 0: // DECLARE
+//                 snprintf(buf, sizeof(buf), "v%d,%d", i, rand() % 100);
+//                 p->instructions[i] = parse_declare(buf);
+//                 break;
+//             case 1: // ADD
+//                 snprintf(buf, sizeof(buf), "v%d,v%d,%s", i, v2_idx, v3_buf);
+//                 p->instructions[i] = parse_add_sub(buf, 1);
+//                 break;
+//             case 2: // SUBTRACT
+//                 snprintf(buf, sizeof(buf), "v%d,v%d,%s", i, v2_idx, v3_buf);
+//                 p->instructions[i] = parse_add_sub(buf, 0);
+//                 break;
+//             case 3: // PRINT
+//                 snprintf(buf, sizeof(buf), "+v%d", (i > 0) ? rand() % i : 0);
+//                 p->instructions[i] = parse_print(buf);
+//                 break;
+//             case 4: // SLEEP
+//                 snprintf(buf, sizeof(buf), "%d", 1 + rand() % 10);
+//                 p->instructions[i] = parse_sleep(buf);
+//                 break;
+//         }
+//     }
+
+//     return p;
+// }
 Process *generate_dummy_process(Config config) {
     int min_ins = config.min_ins > 1 ? config.min_ins : 1;
-    int max_ins = config.max_ins > min_ins ? config.max_ins : min_ins /* + 1 */; //+1 was commented
+    int max_ins = config.max_ins > min_ins ? config.max_ins : min_ins;
     int num_inst = min_ins + rand() % (max_ins - min_ins + 1);
     int memory_allocation = config.min_mem_per_proc + rand() % (config.max_mem_per_proc - config.min_mem_per_proc + 1);
 
     Process *p = (Process *)calloc(1, sizeof(Process));
-    snprintf(p->name, MAX_PROCESS_NAME, "%d", dummy_pid);
+    if (!p) {
+        printf("[ERROR] Failed to allocate memory for process!\n");
+        return NULL;
+    }
+
+    // *** FIX: Proper string initialization ***
+    snprintf(p->name, MAX_PROCESS_NAME - 1, "%d", dummy_pid);
+    p->name[MAX_PROCESS_NAME - 1] = '\0';  // Ensure null termination
+    
     p->pid = dummy_pid++;
     p->state = READY;
     p->program_counter = 0;
     p->num_var = 0;
     p->num_inst = num_inst;
     p->variables_capacity = 8;
-    p->variables = (Variable *)calloc(p->variables_capacity, sizeof(Variable));
-    p->instructions = (Instruction *)calloc(num_inst, sizeof(Instruction));
-    p->memory_allocation = memory_allocation;
     p->in_memory = 0;
+    p->for_depth = 0;  // *** FIX: Initialize for_depth ***
+    p->ticks_ran_in_quantum = 0;  // *** FIX: Initialize quantum ticks ***
+    p->last_exec_time = 0;  // *** FIX: Initialize to 0, will be set when scheduled ***
 
-    // Seed random
+    // *** FIX: Safer memory allocation with error checking ***
+    p->variables = (Variable *)calloc(p->variables_capacity, sizeof(Variable));
+    if (!p->variables) {
+        printf("[ERROR] Failed to allocate variables array!\n");
+        free(p);
+        return NULL;
+    }
+
+    p->instructions = (Instruction *)calloc(num_inst, sizeof(Instruction));
+    if (!p->instructions) {
+        printf("[ERROR] Failed to allocate instructions array!\n");
+        free(p->variables);
+        free(p);
+        return NULL;
+    }
+
+    p->memory_allocation = memory_allocation;
+
+    // Seed random only once
     static int seeded = 0;
-    if (!seeded) { srand((unsigned int)time(NULL)); seeded = 1; }
+    if (!seeded) { 
+        srand((unsigned int)time(NULL)); 
+        seeded = 1; 
+    }
 
-    // Generate random instructions
+    // Generate random instructions with bounds checking
     for (int i = 0; i < num_inst; i++) {
         int t = rand() % 5; // 0=DECLARE, 1=ADD, 2=SUBTRACT, 3=PRINT, 4=SLEEP
         char buf[64];
+        
+        // *** FIX: Ensure we don't access invalid indices ***
         int v2_idx = (i > 0) ? rand() % i : 0;
         int v3_is_var = rand() % 2;
         int v3_idx = (i > 0) ? rand() % i : 0;
         int v3_val = rand() % 100;
         
-        // ensure third argument for add and subtract
         char v3_buf[16];
         if (v3_is_var && i > 0) {
             snprintf(v3_buf, sizeof(v3_buf), "v%d", v3_idx);
@@ -435,7 +538,9 @@ Process *generate_dummy_process(Config config) {
             snprintf(v3_buf, sizeof(v3_buf), "%d", v3_val);
         }
 
-        // parse respective operations
+        // *** FIX: Initialize instruction struct to zero ***
+        memset(&p->instructions[i], 0, sizeof(Instruction));
+
         switch (t) {
             case 0: // DECLARE
                 snprintf(buf, sizeof(buf), "v%d,%d", i, rand() % 100);
@@ -462,7 +567,6 @@ Process *generate_dummy_process(Config config) {
 
     return p;
 }
-
 // for debugging
 void print_process_info(Process *p) {
     printf("Process PID: %d\n", p->pid);

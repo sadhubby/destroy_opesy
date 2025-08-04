@@ -87,13 +87,14 @@ void merge_adjacent_free_blocks(MemoryBlock **head_ref) {
 
 // Free a process's memory block and update memory list
 void free_process_memory(Process *p, MemoryBlock **head_ref) {
+    if(!p) return;
     MemoryBlock* curr = *head_ref;
 
     while (curr) {
         if (curr->occupied && curr->pid == p->pid) {
             curr->occupied = false;
             curr->pid = -1;
-            /* break; */
+            break; 
         }
         curr = curr->next;
     }

@@ -7,7 +7,7 @@
 #include "scheduler.h"
 #include "process.h"
 #include "memory.h"
-
+#include "backing_store.h"
 // global variables
 static bool initialized = false;
 static bool running = true;
@@ -78,6 +78,7 @@ void runCLI() {
         }
         // scheduler-start
         else if (strcmp(command, "scheduler-start") == 0) {
+            remove("csopesy-backing-store.txt");
             init_ready_queue();
             init_cpu_cores(config.num_cpu);
             start_scheduler(config);
@@ -96,6 +97,9 @@ void runCLI() {
         }
         else if (strcmp(command, "vmstat") == 0) {
             vmstat(&memory, &stats);
+        }
+        else if (strcmp(command, "backing-list") == 0) {
+            print_backing_store_contents();
         }
         // unknown command
         else {
@@ -165,5 +169,6 @@ void initialize(){
     printf("  min-mem-per-proc: %d\n", config.min_mem_per_proc);
     init_memory(config.max_overall_mem, config.mem_per_frame, config.max_mem_per_proc, config.min_mem_per_proc);
     
+    memory_head = init_memory_block(config.max_overall_mem);
     initialized = true;
 }
