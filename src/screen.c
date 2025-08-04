@@ -129,16 +129,50 @@ void screen_create_with_code(const char *command_args) {
     char process_name[50];
     int memory_size;
     char instructions[1024];
+    char processed_instructions[1024];
 
     // instruction format-  <process_name> <memory_size> "<instructions>"
     if (sscanf(command_args, "%s %d \"%[^\"]\"", process_name, &memory_size, instructions) != 3) {
         printColor(yellow, "invalid command format\n");
         return;
-    } 
-    // count the number of instructions
+    }
+
+    // Preprocess instructions to convert from space-separated to parentheses format
+    char *src = instructions;
+    char *dst = processed_instructions;
+    char *end = instructions + strlen(instructions);
+    
+    while (src < end) {
+        // Skip leading spaces
+        while (*src == ' ' && src < end) src++;
+        
+        if (strncmp(src, "DECLARE", 7) == 0) {
+            src += 7; // Skip "DECLARE"
+            // Skip spaces after DECLARE
+            while (*src == ' ' && src < end) src++;
+            
+            char varname[50] = {0};
+            int value;
+            if (sscanf(src, "%s %d", varname, &value) == 2) {
+                // Write in the required format
+                dst += sprintf(dst, "DECLARE(%s,%d)", varname, value);
+                // Skip the processed tokens
+                while (*src != ';' && src < end) src++;
+            }
+        }
+        
+        // Copy other characters as is
+        if (src < end) {
+            *dst++ = *src++;
+        }
+    }
+    *dst = '\0';
+
+    // Use processed instructions from here on
+    // count the number of instructions in processed version
     int count = 1;
-    for (int i = 0; instructions[i]; i++) {
-        if (instructions[i] == ';') count++;
+    for (int i = 0; processed_instructions[i]; i++) {
+        if (processed_instructions[i] == ';') count++;
     }
 
     if (count < 1 || count > 50) {
@@ -175,7 +209,7 @@ void screen_create_with_code(const char *command_args) {
         return;
     }
     
-    int parsed = parse_instruction_list(instructions, p->instructions, count);
+    int parsed = parse_instruction_list(processed_instructions, p->instructions, count);
     if (parsed <= 0) {
         printColor(yellow, "Instruction parsing failed.\n");
         free(p->instructions);
