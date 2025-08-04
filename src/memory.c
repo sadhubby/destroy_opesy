@@ -219,9 +219,10 @@ void update_used_free_memory() {
     uint64_t used_memory = 0;
 
     // Collect memory allocations of active processes
-    for (int i = 0; i < num_processes; i++) {
-        Process *p = process_table[i];
-        if (p && (p->state == RUNNING || p->state == SLEEPING)) {
+
+    for (int i = 0; i < num_cores; i++) {
+        Process *p = cpu_cores[i];
+        if (p) {
             temp_pids[temp_count] = p->pid;
             temp_allocs[temp_count] = p->memory_allocation;
             used_memory += p->memory_allocation;
@@ -229,9 +230,12 @@ void update_used_free_memory() {
         }
     }
 
+    // Ensure used memory doesn't exceed total memory
+    if (used_memory > memory.total_memory) {
+        used_memory = memory.total_memory;
+    }
     memory.used_memory = used_memory;
     memory.free_memory = memory.total_memory - used_memory;
-
 }
 
 void process_smi(int num_cores, Process **cpu_cores) {
