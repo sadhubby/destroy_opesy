@@ -95,7 +95,7 @@ void runCLI() {
         }
         // report-util
         else if (strcmp(command, "report-util") == 0) {
-            printf("report-util\n");
+            report_utilization(get_num_cores(), get_cpu_cores(), get_finished_count(), get_finished_processes());
         }
         // process-smi
         else if (strcmp(command, "process-smi") == 0) {

@@ -281,3 +281,67 @@ bool is_valid_memory_size(int memory_size){
     }
     return (memory_size & (memory_size - 1)) == 0; 
 }
+
+void report_utilization(int num_cores, Process **cpu_cores, int finished_count, Process **finished_processes) {
+    FILE *fp = fopen("csopesy-log.txt", "w");  // Open in write mode - creates fresh file each time
+    if (!fp) {
+        printColor(yellow, "Failed to open log file\n");
+        return;
+    }
+
+    time_t current_time;
+    time(&current_time);
+    char timestamp[64];
+    struct tm *tm_info = localtime(&current_time);
+    strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", tm_info);
+    
+    fprintf(fp, "\n=== System Utilization Report - %s ===\n", timestamp);
+
+    int used = 0;
+    for (int i = 0; i < num_cores; i++) {
+        if (cpu_cores[i] != NULL) {
+            used++;
+        }
+    }
+
+    int available = num_cores - used;
+    double utilization = (num_cores > 0) ? (100.0 * used / num_cores) : 0.0;
+
+    fprintf(fp, "CPU Utilization: %.2f%%\n", utilization);
+    fprintf(fp, "Cores used: %d\n", used);
+    fprintf(fp, "Cores available: %d\n", available);
+
+    // Running processes section
+    fprintf(fp, "\nRunning Processes\n");
+    fprintf(fp, "%-16s %-24s %-12s %-10s\n", "Name", "Last Exec Time", "Core", "PC/Total");
+    fprintf(fp, "--------------------------------------------------------\n");
+    for (int i = 0; i < num_cores; i++) {
+        if (cpu_cores[i] != NULL) {
+            Process *p = cpu_cores[i];
+            char timebuf[32];
+            struct tm *tm_info = localtime(&p->last_exec_time);
+            strftime(timebuf, sizeof(timebuf), "%Y-%m-%d %H:%M:%S", tm_info);
+            fprintf(fp, "P%-16s %-24s %-10d %d/%d\n", 
+                p->name, timebuf, i, p->program_counter + 1, p->num_inst);
+        }
+    }
+
+    // Finished processes section
+    fprintf(fp, "\nFinished Processes\n");
+    fprintf(fp, "%-16s %-24s %-12s %-10s\n", "Name", "Last Exec Time", "Core", "PC/Total");
+    fprintf(fp, "--------------------------------------------------------\n");
+    for (int i = 0; i < finished_count; i++) {
+        if (finished_processes[i] != NULL) {
+            Process *p = finished_processes[i];
+            char timebuf[32];
+            struct tm *tm_info = localtime(&p->last_exec_time);
+            strftime(timebuf, sizeof(timebuf), "%Y-%m-%d %H:%M:%S", tm_info);
+            fprintf(fp, "P%-16s %-24s %-10s %d/%d\n", 
+                p->name, timebuf, "Finished", p->program_counter, p->num_inst);
+        }
+    }
+    
+    fprintf(fp, "\n"); // Add a blank line between reports
+    fclose(fp);
+    printf("Utilization report generated: csopesy-log.txt\n");
+}
