@@ -66,22 +66,22 @@ void execute_instruction(Process *p, Config config) {
         return;
     }
     // if inside a for loop
-    // if (p->for_depth > 0) {
-    //     ForContext *ctx = &p->for_stack[p->for_depth - 1];
-    //     if (ctx->current_index < ctx->sub_instruction_count) {
-    //         inst = &ctx->sub_instructions[ctx->current_index];
-    //     } else if (ctx->remaining > 0) {
-    //         ctx->remaining--;
-    //         ctx->current_index = 0;
-    //         inst = &ctx->sub_instructions[ctx->current_index];
-    //     } else {
-    //         // when the loop is done, pop from stack
-    //         p->for_depth--;
-    //         p->program_counter++;
-    //         return;
-    //     }
-    // }
-    // else
+    if (p->for_depth > 0) {
+        ForContext *ctx = &p->for_stack[p->for_depth - 1];
+        if (ctx->current_index < ctx->sub_instruction_count) {
+            inst = &ctx->sub_instructions[ctx->current_index];
+        } else if (ctx->remaining > 0) {
+            ctx->remaining--;
+            ctx->current_index = 0;
+            inst = &ctx->sub_instructions[ctx->current_index];
+        } else {
+            // when the loop is done, pop from stack
+            p->for_depth--;
+            p->program_counter++;
+            return;
+        }
+    }
+    else
     inst = &p->instructions[p->program_counter];
 
     switch (inst->type) {
@@ -126,15 +126,28 @@ void execute_instruction(Process *p, Config config) {
         
         // for
         case FOR: {
-            // ForContext *ctx = &p->for_stack[p->for_depth++];
-            // ctx->repeat_count = inst->repeat_count;
-            // ctx->remaining = inst->repeat_count - 1;
-            // ctx->current_index = 0;
-            // ctx->sub_instructions = inst->sub_instructions;
-            // ctx->sub_instruction_count = inst->sub_instruction_count;
-            // inst = &ctx->sub_instructions[ctx->current_index];
-            // execute_instruction(p);
-            // break;
+            if (p->for_depth >= MAX_LOOP_DEPTH) {
+                printf("[ERROR] Maximum loop depth exceeded in process %d\n", p->pid);
+                p->program_counter++;
+                break;
+            }
+            ForContext *ctx = &p->for_stack[p->for_depth++];
+            ctx->repeat_count = inst->repeat_count;
+            ctx->remaining = inst->repeat_count - 1;
+            ctx->current_index = 0;
+            ctx->sub_instructions = inst->sub_instructions;
+            ctx->sub_instruction_count = inst->sub_instruction_count;
+            
+            // Execute first instruction of the loop immediately
+            if (ctx->sub_instruction_count > 0) {
+                inst = &ctx->sub_instructions[ctx->current_index];
+                execute_instruction(p, config);
+            } else {
+                // Empty loop body, just increment program counter
+                p->for_depth--;
+                p->program_counter++;
+            }
+            break;
         }
         // sleep
         case SLEEP: {
@@ -170,11 +183,11 @@ void execute_instruction(Process *p, Config config) {
         p->last_exec_time = time(NULL);
 
     // if in for loop, move index in for loop
-    // if (p->for_depth > 0) {
-    //     p->for_stack[p->for_depth - 1].current_index++;
-    // } else {
-    p->program_counter++;
-    // }
+    if (p->for_depth > 0) {
+        p->for_stack[p->for_depth - 1].current_index++;
+    } else {
+        p->program_counter++;
+    }
 
     return;
 }
@@ -400,74 +413,6 @@ int parse_instruction_list(const char *instrs, Instruction *out, int max_count) 
 
 static int dummy_pid = 1;
 
-// Generate a dummy process for testing or batch creation
-// Process *generate_dummy_process(Config config) {
-//     int min_ins = config.min_ins > 1 ? config.min_ins : 1;
-//     int max_ins = config.max_ins > min_ins ? config.max_ins : min_ins /* + 1 */; //+1 was commented
-//     int num_inst = min_ins + rand() % (max_ins - min_ins + 1);
-//     int memory_allocation = config.min_mem_per_proc + rand() % (config.max_mem_per_proc - config.min_mem_per_proc + 1);
-
-//     Process *p = (Process *)calloc(1, sizeof(Process));
-//     snprintf(p->name, MAX_PROCESS_NAME, "%d", dummy_pid);
-//     p->pid = dummy_pid++;
-//     p->state = READY;
-//     p->program_counter = 0;
-//     p->num_var = 0;
-//     p->num_inst = num_inst;
-//     p->variables_capacity = 8;
-//     p->variables = (Variable *)calloc(p->variables_capacity, sizeof(Variable));
-//     p->instructions = (Instruction *)calloc(num_inst, sizeof(Instruction));
-//     p->memory_allocation = memory_allocation;
-//     p->in_memory = 0;
-
-//     // Seed random
-//     static int seeded = 0;
-//     if (!seeded) { srand((unsigned int)time(NULL)); seeded = 1; }
-
-//     // Generate random instructions
-//     for (int i = 0; i < num_inst; i++) {
-//         int t = rand() % 5; // 0=DECLARE, 1=ADD, 2=SUBTRACT, 3=PRINT, 4=SLEEP
-//         char buf[64];
-//         int v2_idx = (i > 0) ? rand() % i : 0;
-//         int v3_is_var = rand() % 2;
-//         int v3_idx = (i > 0) ? rand() % i : 0;
-//         int v3_val = rand() % 100;
-        
-//         // ensure third argument for add and subtract
-//         char v3_buf[16];
-//         if (v3_is_var && i > 0) {
-//             snprintf(v3_buf, sizeof(v3_buf), "v%d", v3_idx);
-//         } else {
-//             snprintf(v3_buf, sizeof(v3_buf), "%d", v3_val);
-//         }
-
-//         // parse respective operations
-//         switch (t) {
-//             case 0: // DECLARE
-//                 snprintf(buf, sizeof(buf), "v%d,%d", i, rand() % 100);
-//                 p->instructions[i] = parse_declare(buf);
-//                 break;
-//             case 1: // ADD
-//                 snprintf(buf, sizeof(buf), "v%d,v%d,%s", i, v2_idx, v3_buf);
-//                 p->instructions[i] = parse_add_sub(buf, 1);
-//                 break;
-//             case 2: // SUBTRACT
-//                 snprintf(buf, sizeof(buf), "v%d,v%d,%s", i, v2_idx, v3_buf);
-//                 p->instructions[i] = parse_add_sub(buf, 0);
-//                 break;
-//             case 3: // PRINT
-//                 snprintf(buf, sizeof(buf), "+v%d", (i > 0) ? rand() % i : 0);
-//                 p->instructions[i] = parse_print(buf);
-//                 break;
-//             case 4: // SLEEP
-//                 snprintf(buf, sizeof(buf), "%d", 1 + rand() % 10);
-//                 p->instructions[i] = parse_sleep(buf);
-//                 break;
-//         }
-//     }
-
-//     return p;
-// }
 Process *generate_dummy_process(Config config) {
     int min_ins = config.min_ins > 1 ? config.min_ins : 1;
     int max_ins = config.max_ins > min_ins ? config.max_ins : min_ins;
@@ -524,7 +469,7 @@ Process *generate_dummy_process(Config config) {
 
     // Generate random instructions with bounds checking
     for (int i = 0; i < num_inst; i++) {
-        int t = rand() % 5; // 0=DECLARE, 1=ADD, 2=SUBTRACT, 3=PRINT, 4=SLEEP
+        int t = rand() % 6; // 0=DECLARE, 1=ADD, 2=SUBTRACT, 3=PRINT, 4=SLEEP, 5=FOR
         char buf[64];
         
         // *** FIX: Ensure we don't access invalid indices ***
@@ -564,6 +509,9 @@ Process *generate_dummy_process(Config config) {
                 snprintf(buf, sizeof(buf), "%d", 1 + rand() % 10);
                 p->instructions[i] = parse_sleep(buf);
                 break;
+            case 5: // FOR
+                snprintf(buf, sizeof(buf), "[v%d,v%d];%d", i, v2_idx, 1 + rand() % 5);
+                p->instructions[i] = parse_for(buf);
         }
     }
 
