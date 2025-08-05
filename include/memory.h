@@ -28,6 +28,9 @@ typedef struct MemoryBlock {
 extern Memory memory;
 extern MemoryBlock* memory_head;
 
+// Read a uint16 value from memory for a given process
+uint16_t read_from_memory(Process *p, uint16_t addr);
+
 // Core memory functions
 void init_memory(uint64_t total_memory, uint64_t mem_per_frame, uint64_t max_mem_per_proc, uint64_t min_mem_per_proc);
 void update_free_memory();
