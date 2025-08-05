@@ -13,11 +13,19 @@ volatile long next_pid = 1;
 // retain in uint16 bounds (0 to 65535)
 #define CLAMP_UINT16(x) ((x) > 65535 ? 65535 : ((x) < 0 ? 0 : (x)))
 
+// Initialize the symbol table segment
+void init_symbol_table(SymbolTable *st) {
+    st->capacity = 8;  // Initial capacity
+    st->size = 0;
+    st->base_addr = 0;  // Will be set during memory allocation
+    st->variables = (Variable *)calloc(st->capacity, sizeof(Variable));
+}
+
 // get variable given a process and a variable name
 Variable *get_variable(Process *p, const char *name) {
-    if (!p || !name || !p->variables) {
+    if (!p || !name || !p->symbol_table.variables) {
         printf("[ERROR] Invalid arguments to get_variable: p=%p, name=%p, variables=%p\n",
-               (void*)p, (void*)name, p ? (void*)p->variables : NULL);
+               (void*)p, (void*)name, p ? (void*)p->symbol_table.variables : NULL);
         return NULL;
     }
 
@@ -36,36 +44,41 @@ Variable *get_variable(Process *p, const char *name) {
     }
     trimmed_name[j] = '\0';
 
-    // iterate through each variable
-    for (int i = 0; i < p->num_var; i++) {
-        if (strcmp(p->variables[i].name, trimmed_name) == 0) {
-            return &p->variables[i];
+    // Search in symbol table
+    for (i = 0; i < p->symbol_table.size; i++) {
+        if (strcmp(p->symbol_table.variables[i].name, trimmed_name) == 0) {
+            return &p->symbol_table.variables[i];
         }
     }
 
-    // Grow variable array if needed, but with safety checks
-    if (p->num_var >= p->variables_capacity) {
-        if (p->variables_capacity >= 1000000) {
-            printf("[ERROR] Variable capacity too large for process %d\n", p->pid);
+    // Grow symbol table if needed
+    if (p->symbol_table.size >= p->symbol_table.capacity) {
+        if (p->symbol_table.capacity >= 1000000) {
+            printf("[ERROR] Symbol table capacity too large for process %d\n", p->pid);
             return NULL;
         }
-        int new_cap = p->variables_capacity * 2;
-        Variable *new_vars = malloc(new_cap * sizeof(Variable));  // Use malloc instead of realloc
+        int new_cap = p->symbol_table.capacity * 2;
+        Variable *new_vars = malloc(new_cap * sizeof(Variable));
         if (!new_vars) {
-            printf("[ERROR] Failed to allocate new variables array for process %d!\n", p->pid);
+            printf("[ERROR] Failed to allocate new symbol table for process %d!\n", p->pid);
             return NULL;
         }
         // Copy old data and free old array
-        memcpy(new_vars, p->variables, p->variables_capacity * sizeof(Variable));
-        memset(new_vars + p->variables_capacity, 0, (new_cap - p->variables_capacity) * sizeof(Variable));
-        free(p->variables);
-        p->variables = new_vars;
-        p->variables_capacity = new_cap;
-        // Debug message removed for cleaner output
+        memcpy(new_vars, p->symbol_table.variables, p->symbol_table.capacity * sizeof(Variable));
+        memset(new_vars + p->symbol_table.capacity, 0, (new_cap - p->symbol_table.capacity) * sizeof(Variable));
+        free(p->symbol_table.variables);
+        p->symbol_table.variables = new_vars;
+        p->symbol_table.capacity = new_cap;
     }
-    strcpy(p->variables[p->num_var].name, trimmed_name);
-    p->variables[p->num_var].value = 0;
-    return &p->variables[p->num_var++];
+
+    // Add new variable to symbol table
+    Variable *new_var = &p->symbol_table.variables[p->symbol_table.size];
+    strcpy(new_var->name, trimmed_name);
+    new_var->value = 0;
+    new_var->address = p->symbol_table.base_addr + (p->symbol_table.size * sizeof(uint16_t));
+    p->symbol_table.size++;
+    
+    return new_var;
 }
 
 //  for null values
@@ -83,9 +96,9 @@ void execute_instruction(Process *p, Config config) {
     }
 
     // Validate process structure
-    if (p->program_counter < 0 || !p->instructions || !p->variables) {
+    if (p->program_counter < 0 || !p->instructions || !p->symbol_table.variables) {
         printf("[ERROR] Invalid process state: PC=%d, instructions=%p, variables=%p\n",
-               p->program_counter, (void*)p->instructions, (void*)p->variables);
+               p->program_counter, (void*)p->instructions, (void*)p->symbol_table.variables);
         return;
     }
 
@@ -269,10 +282,10 @@ uint32_t process_table_size = 0;
 void cleanup_process(Process *p) {
     if (!p) return;
 
-    // Free variables array
-    if (p->variables) {
-        free(p->variables);
-        p->variables = NULL;
+    // Free symbol table
+    if (p->symbol_table.variables) {
+        free(p->symbol_table.variables);
+        p->symbol_table.variables = NULL;
     }
 
     // Free logs array
@@ -556,14 +569,12 @@ Process *generate_dummy_process(Config config) {
     p->pid = assigned_pid;
     p->state = READY;
     p->program_counter = 0;
-    p->num_var = 0;
     p->num_inst = num_inst;
     p->num_logs = 0;
-    p->variables_capacity = 8;
     p->in_memory = 0;
-    p->for_depth = 0;  // *** FIX: Initialize for_depth ***
-    p->ticks_ran_in_quantum = 0;  // *** FIX: Initialize quantum ticks ***
-    p->last_exec_time = 0;  // *** FIX: Initialize to 0, will be set when scheduled ***
+    p->for_depth = 0;  // Initialize for_depth
+    p->ticks_ran_in_quantum = 0;  // Initialize quantum ticks
+    p->last_exec_time = 0;  // Initialize to 0, will be set when scheduled
     p->num_pages = memory_allocation / config.mem_per_frame;
     p->page_table = (PageTableEntry *)calloc(p->num_pages, sizeof(PageTableEntry));
 
@@ -573,18 +584,13 @@ Process *generate_dummy_process(Config config) {
         return NULL;
     }
 
-    // *** FIX: Safer memory allocation with error checking ***
-    p->variables = (Variable *)calloc(p->variables_capacity, sizeof(Variable));
-    if (!p->variables) {
-        printf("[ERROR] Failed to allocate variables array!\n");
-        free(p);
-        return NULL;
-    }
+    // Initialize symbol table
+    init_symbol_table(&p->symbol_table);
 
     p->instructions = (Instruction *)calloc(num_inst, sizeof(Instruction));
     if (!p->instructions) {
         printf("[ERROR] Failed to allocate instructions array!\n");
-        free(p->variables);
+        free(p->symbol_table.variables);
         free(p);
         return NULL;
     }
@@ -653,6 +659,7 @@ void print_process_info(Process *p) {
     printf("Process PID: %d\n", p->pid);
     printf("Process name: %s\n", p->name);
     printf("Number of instructions: %d\n", p->num_inst);
+    printf("Symbol table size: %d\n", p->symbol_table.size);
     for (int i = 0; i < p->num_inst; i++) {
         Instruction *inst = &p->instructions[i];
         switch (inst->type) {

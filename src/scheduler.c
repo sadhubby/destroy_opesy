@@ -138,7 +138,7 @@ void schedule_fcfs() {
             // Validate process data before scheduling
             if (next->in_memory == 1 || try_allocate_memory(next, memory_head)) {
                 // Extra validation to prevent crashes
-                if (next->instructions != NULL && next->variables != NULL) {
+                if (next->instructions != NULL && next->symbol_table.variables != NULL) {
                     update_cpu_util(1);
                     cpu_cores[i] = next;
                     next->core = i;  // Set core index
@@ -150,10 +150,10 @@ void schedule_fcfs() {
                         update_free_memory();
                     }
                 } else {
-                    printf("[ERROR] Process %s has invalid instruction/variable arrays\n", next->name);
+                    printf("[ERROR] Process %s has invalid instruction/symbol table arrays\n", next->name);
                     // Don't schedule this process
                     if (next->instructions) free(next->instructions);
-                    if (next->variables) free(next->variables);
+                    if (next->symbol_table.variables) free(next->symbol_table.variables);
                     free(next);
                 }
             } else {
@@ -196,7 +196,7 @@ void schedule_fcfs() {
                 
                 if (victim) {
                     // Only write to backing store if we have valid data
-                    if (victim->instructions && victim->variables) {
+                    if (victim->instructions && victim->symbol_table.variables) {
                         write_process_to_backing_store(victim);
                     }
                     
@@ -204,8 +204,7 @@ void schedule_fcfs() {
                     cpu_cores[victim_core] = NULL;
                     update_cpu_util(-1);
                     
-                    if (victim->instructions) free(victim->instructions);
-                    if (victim->variables) free(victim->variables);
+                    cleanup_process(victim);
                     free(victim);
                     
                     // Try again with the new free memory
@@ -215,14 +214,12 @@ void schedule_fcfs() {
                         enqueue_ready(swapped_in);
                         update_free_memory();
                     } else {
-                        if (swapped_in->instructions) free(swapped_in->instructions);
-                        if (swapped_in->variables) free(swapped_in->variables);
+                        cleanup_process(swapped_in);
                         free(swapped_in);
                     }
                 } else {
                     // No victim found, free the swapped-in process
-                    if (swapped_in->instructions) free(swapped_in->instructions);
-                    if (swapped_in->variables) free(swapped_in->variables);
+                    cleanup_process(swapped_in);
                     free(swapped_in);
                 }
             }
@@ -254,8 +251,7 @@ void schedule_fcfs() {
                 update_free_memory();
             } else {
                 // Failed to allocate memory
-                if (swapped_in->instructions) free(swapped_in->instructions);
-                if (swapped_in->variables) free(swapped_in->variables);
+                cleanup_process(swapped_in);
                 free(swapped_in);
             }
         }
@@ -296,7 +292,7 @@ void schedule_rr() {
             // Validate process data before scheduling
             if (next->in_memory == 1 || try_allocate_memory(next, memory_head)) {
                 // Extra validation to prevent crashes
-                if (next->instructions != NULL && next->variables != NULL) {
+                if (next->instructions != NULL && next->symbol_table.variables != NULL) {
                     update_cpu_util(1);
                     cpu_cores[i] = next;
                     next->core = i;  // Set core index
@@ -309,10 +305,9 @@ void schedule_rr() {
                     }
                     next->ticks_ran_in_quantum = 0;
                 } else {
-                    printf("[ERROR] Process %s has invalid instruction/variable arrays\n", next->name);
+                    printf("[ERROR] Process %s has invalid instruction/symbol table arrays\n", next->name);
                     // Don't schedule this process
-                    if (next->instructions) free(next->instructions);
-                    if (next->variables) free(next->variables);
+                    cleanup_process(next);
                     free(next);
                 }
             } else {
@@ -355,7 +350,7 @@ void schedule_rr() {
                 
                 if (victim) {
                     // Only write to backing store if we have valid data
-                    if (victim->instructions && victim->variables) {
+                    if (victim->instructions && victim->symbol_table.variables) {
                         write_process_to_backing_store(victim);
                     }
                     
@@ -363,8 +358,7 @@ void schedule_rr() {
                     cpu_cores[victim_core] = NULL;
                     update_cpu_util(-1);
                     
-                    if (victim->instructions) free(victim->instructions);
-                    if (victim->variables) free(victim->variables);
+                    cleanup_process(victim);
                     free(victim);
                     
                     // Try again with the new free memory
@@ -374,14 +368,12 @@ void schedule_rr() {
                         enqueue_ready(swapped_in);
                         update_free_memory();
                     } else {
-                        if (swapped_in->instructions) free(swapped_in->instructions);
-                        if (swapped_in->variables) free(swapped_in->variables);
+                        cleanup_process(swapped_in);
                         free(swapped_in);
                     }
                 } else {
                     // No victim found, free the swapped-in process
-                    if (swapped_in->instructions) free(swapped_in->instructions);
-                    if (swapped_in->variables) free(swapped_in->variables);
+                    cleanup_process(swapped_in);
                     free(swapped_in);
                 }
             }
@@ -413,8 +405,7 @@ void schedule_rr() {
                 update_free_memory();
             } else {
                 // Failed to allocate memory
-                if (swapped_in->instructions) free(swapped_in->instructions);
-                if (swapped_in->variables) free(swapped_in->variables);
+                cleanup_process(swapped_in);
                 free(swapped_in);
             }
         }
@@ -492,7 +483,7 @@ DWORD WINAPI core_loop(LPVOID lpParam) {
         if (should_execute) {
     // Add comprehensive validation to prevent crashes
     if (p && p->program_counter < p->num_inst && 
-        p->instructions != NULL && p->variables != NULL) {
+        p->instructions != NULL && p->symbol_table.variables != NULL) {
         
         // Extra validation of instruction data
         Instruction *inst = &p->instructions[p->program_counter];

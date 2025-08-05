@@ -18,10 +18,20 @@ typedef enum {
 } ProcessState;
 
 // variables
+// Symbol table entry structure
 typedef struct {
     char name[MAX_PROCESS_NAME];
     uint16_t value;
+    uint32_t address;     // Address in symbol table segment
 } Variable;
+
+// Symbol table segment structure
+typedef struct {
+    Variable *variables;   // Array of variables
+    uint32_t size;        // Current size
+    uint32_t capacity;    // Total capacity
+    uint32_t base_addr;   // Base address of symbol table segment
+} SymbolTable;
 
 // type of instruction (for is segmented)
 typedef enum {
@@ -80,9 +90,7 @@ typedef struct{
     int program_counter;
     uint16_t sleep_until_tick;
 
-    Variable *variables;
-    int num_var;
-    int variables_capacity;
+    SymbolTable symbol_table;   // Symbol table segment for variables
 
     Instruction *instructions;
     int num_inst;

@@ -95,18 +95,8 @@ void screen_start(const char *name, int memory_size, Config config) {
     p->for_depth = 0;
     p->ticks_ran_in_quantum = 0;
 
-    // Initialize variables array with proper capacity
-    p->variables_capacity = p->num_inst;  // Set initial capacity
-    p->variables = malloc(sizeof(Variable) * p->variables_capacity);
-    if (!p->variables) {
-        printColor(yellow, "Failed to allocate memory for process variables.\n");
-        free(p);
-        return;
-    }
-    memset(p->variables, 0, sizeof(Variable) * p->variables_capacity);
-    p->num_var = 0;  // Start with no variables
-    p->variables_capacity = p->num_inst;  // Set capacity
-    p->num_var = 0;  // Initialize with no variables
+    // Initialize symbol table for variables
+    init_symbol_table(&p->symbol_table);
 
     // Initialize logs array
     p->logs = malloc(sizeof(Log) * 100);  // Support up to 100 logs
@@ -201,7 +191,9 @@ void screen_start(const char *name, int memory_size, Config config) {
         printColor(yellow, "Failed to allocate memory for page table.\n");
         free(p->instructions);
         free(p->logs);
-        free(p->variables);
+        if (p->symbol_table.variables) {
+            free(p->symbol_table.variables);
+        }
         free(p);
         return;
     }
@@ -368,6 +360,9 @@ void screen_create_with_code(const char *command_args) {
     p->pid = process_count + 1;
     p->program_counter = 0;
     p->last_exec_time = time(NULL);
+    
+    // Initialize symbol table
+    init_symbol_table(&p->symbol_table);
     
     // Allocate and parse instructions
     p->instructions = malloc(sizeof(Instruction) * count);
