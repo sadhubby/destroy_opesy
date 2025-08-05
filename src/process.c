@@ -265,10 +265,52 @@ Process **process_table = NULL;
 uint32_t num_processes = 0;
 uint32_t process_table_size = 0;
 
+// Cleanup all resources associated with a process
+void cleanup_process(Process *p) {
+    if (!p) return;
+
+    // Free variables array
+    if (p->variables) {
+        free(p->variables);
+        p->variables = NULL;
+    }
+
+    // Free logs array
+    if (p->logs) {
+        free(p->logs);
+        p->logs = NULL;
+    }
+
+    // Free page table
+    if (p->page_table) {
+        free(p->page_table);
+        p->page_table = NULL;
+    }
+
+    // Free instructions and nested FOR instructions
+    if (p->instructions) {
+        // Clean up any FOR loop sub-instructions
+        for (int i = 0; i < p->num_inst; i++) {
+            if (p->instructions[i].type == FOR && p->instructions[i].sub_instructions) {
+                free(p->instructions[i].sub_instructions);
+            }
+        }
+        free(p->instructions);
+        p->instructions = NULL;
+    }
+
+}
+
 void add_process(Process *p) {
     if (num_processes >= process_table_size) {
-        process_table_size = process_table_size == 0 ? 8 : process_table_size * 2;
-        process_table = realloc(process_table, process_table_size * sizeof(Process *));
+        uint32_t new_size = process_table_size == 0 ? 8 : process_table_size * 2;
+        Process **new_table = realloc(process_table, new_size * sizeof(Process *));
+        if (!new_table) {
+            printf("[ERROR] Failed to grow process table\n");
+            return;
+        }
+        process_table = new_table;
+        process_table_size = new_size;
     }
 
     process_table[num_processes++] = p;

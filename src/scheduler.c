@@ -519,6 +519,7 @@ DWORD WINAPI core_loop(LPVOID lpParam) {
         p = cpu_cores[core_id];
         if (p && p->program_counter >= p->num_inst && p->for_depth == 0) {
             p->state = FINISHED;
+            cleanup_process(p);
             add_finished_process(p);
             
             // *** FIX: Free memory BEFORE setting to NULL ***

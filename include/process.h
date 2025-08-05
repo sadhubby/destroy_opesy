@@ -134,5 +134,6 @@ extern volatile long next_pid;
 Process *generate_dummy_process(Config config);
 extern void print_process_info(Process *p);
 void remove_process_from_table(Process *p);
+void cleanup_process(Process *p);
 
 #endif
