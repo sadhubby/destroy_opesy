@@ -399,34 +399,8 @@ void process_smi(int num_cores, Process **cpu_cores) {
 void vmstat(Memory *mem, CPUStats *stats) {
     printf("%10lld %4s %s\n", memory.total_memory, "B", "total memory");
     update_used_free_memory();
-
-    // Allocate dynamic arrays for storing process info
-    int *temp_pids = malloc(sizeof(int) * num_cores);  // Only need space for cores
-    uint64_t *temp_allocs = malloc(sizeof(uint64_t) * num_cores);
-    if (!temp_pids || !temp_allocs) {
-        fprintf(stderr, "Memory allocation failed in process_smi()\n");
-        free(temp_pids);
-        free(temp_allocs);
-        return;
-    }
-
-    int temp_count = 0;
-    uint64_t used_memory = 0;
-
-    // Only collect processes that are currently on CPU cores
-    for (int i = 0; i < num_cores; i++) {
-        Process *p = cpu_cores[i];
-        if (p) {
-            temp_pids[temp_count] = p->pid;
-            temp_allocs[temp_count] = p->memory_allocation;
-            used_memory += p->memory_allocation;
-            temp_count++;
-        }
-    }
-
-
-    printf("%10lld %4s %s\n", used_memory, "B", "used memory");
-    printf("%10lld %4s %s\n", memory.total_memory - used_memory, "B", "free memory");
+    printf("%10lld %4s %s\n", memory.used_memory, "B", "used memory");
+    printf("%10lld %4s %s\n", memory.free_memory, "B", "free memory");
     printf("%10d %4s %s\n", stats->total_ticks, "B", "total ticks");
     printf("%10d %4s %s\n", stats->active_ticks, "", "active ticks");
     printf("%10d %4s %s\n", stats->idle_ticks, "", "idle ticks");
