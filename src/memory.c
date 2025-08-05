@@ -228,7 +228,7 @@ int handle_page_fault(Process *p, uint32_t virtual_address) {
 //    frame_table[p->page_table[page].frame_number].last_used_tick = CPU_TICKS;
 //    *success = 1;
 //    return memory_space[physical_address / 2];
-//}
+// }
 
 // Recalculate free memory and active processes by walking the list
 void update_free_memory() {
