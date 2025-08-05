@@ -154,8 +154,7 @@ void handle_memory_pressure() {
 }
 // fcfs scheduling
 void schedule_fcfs() {
-
-    EnterCriticalSection(&cpu_cores_cs);
+   EnterCriticalSection(&cpu_cores_cs);
 
     // Wake up sleeping processes
     for (int i = 0; i < num_cores; i++) {
@@ -177,16 +176,15 @@ void schedule_fcfs() {
                 if (next->instructions != NULL && next->variables != NULL) {
                     update_cpu_util(1);
                     cpu_cores[i] = next;
-                    next->core = i;  // Set core index
+                    next->core = i;
                     next->state = RUNNING;
-                    next->last_exec_time = time(NULL); // Set execution time
+                    next->last_exec_time = time(NULL);
                     
                     if (next->in_memory == 0) {
                         next->in_memory = 1;
                         update_free_memory();
                     }
                 } else {
-                    printf("[ERROR] Process %s has invalid instruction/variable arrays\n", next->name);
                     // Don't schedule this process
                     if (next->instructions) free(next->instructions);
                     if (next->variables) free(next->variables);
@@ -195,8 +193,6 @@ void schedule_fcfs() {
             } else {
                 // Can't allocate memory - send to backing store
                 write_process_to_backing_store(next);
-                // if (next->instructions) free(next->instructions);
-                // if (next->variables) free(next->variables);
                 free(next);
             }
         }
@@ -208,8 +204,6 @@ void schedule_fcfs() {
         if (swapped_in) {
             // Validate the process from backing store
             if (swapped_in->num_inst <= 0 || swapped_in->num_inst > 1000000) {
-                printf("[ERROR] Invalid process read from backing store: num_inst=%d\n", 
-                       swapped_in->num_inst);
                 free(swapped_in);
             } else if (try_allocate_memory(swapped_in, memory_head)) {
                 // Successfully allocated memory
@@ -279,8 +273,6 @@ void schedule_fcfs() {
         if (swapped_in) {
             // Validate the process
             if (swapped_in->num_inst <= 0 || swapped_in->num_inst > 1000000) {
-                printf("[ERROR] Invalid process read from backing store: num_inst=%d\n", 
-                       swapped_in->num_inst);
                 free(swapped_in);
             } else if (try_allocate_memory(swapped_in, memory_head)) {
                 // Success - remove from backing store and add to ready queue
@@ -301,7 +293,7 @@ void schedule_fcfs() {
 }
 
 void schedule_rr() {
-    EnterCriticalSection(&cpu_cores_cs);
+     EnterCriticalSection(&cpu_cores_cs);
 
     // Wake up sleeping processes
     for (int i = 0; i < num_cores; i++) {
@@ -335,9 +327,9 @@ void schedule_rr() {
                 if (next->instructions != NULL && next->variables != NULL) {
                     update_cpu_util(1);
                     cpu_cores[i] = next;
-                    next->core = i;  // Set core index
+                    next->core = i;
                     next->state = RUNNING;
-                    next->last_exec_time = time(NULL); // Set execution time
+                    next->last_exec_time = time(NULL);
                     
                     if (next->in_memory == 0) {
                         next->in_memory = 1;
@@ -345,7 +337,6 @@ void schedule_rr() {
                     }
                     next->ticks_ran_in_quantum = 0;
                 } else {
-                    printf("[ERROR] Process %s has invalid instruction/variable arrays\n", next->name);
                     // Don't schedule this process
                     if (next->instructions) free(next->instructions);
                     if (next->variables) free(next->variables);
@@ -354,8 +345,6 @@ void schedule_rr() {
             } else {
                 // Can't allocate memory - send to backing store
                 write_process_to_backing_store(next);
-                // if (next->instructions) free(next->instructions);
-                // if (next->variables) free(next->variables);
                 free(next);
             }
         }
@@ -367,8 +356,6 @@ void schedule_rr() {
         if (swapped_in) {
             // Validate the process from backing store
             if (swapped_in->num_inst <= 0 || swapped_in->num_inst > 1000000) {
-                printf("[ERROR] Invalid process read from backing store: num_inst=%d\n", 
-                       swapped_in->num_inst);
                 free(swapped_in);
             } else if (try_allocate_memory(swapped_in, memory_head)) {
                 // Successfully allocated memory
@@ -438,8 +425,6 @@ void schedule_rr() {
         if (swapped_in) {
             // Validate the process
             if (swapped_in->num_inst <= 0 || swapped_in->num_inst > 1000000) {
-                printf("[ERROR] Invalid process read from backing store: num_inst=%d\n", 
-                       swapped_in->num_inst);
                 free(swapped_in);
             } else if (try_allocate_memory(swapped_in, memory_head)) {
                 // Success - remove from backing store and add to ready queue
@@ -503,7 +488,7 @@ DWORD WINAPI scheduler_loop(LPVOID lpParam) {
 
 // Per-core thread function
 DWORD WINAPI core_loop(LPVOID lpParam) {
-    int core_id = (int)(intptr_t)lpParam;
+     int core_id = (int)(intptr_t)lpParam;
 
     while (scheduler_running) {
         EnterCriticalSection(&cpu_cores_cs);
@@ -512,31 +497,26 @@ DWORD WINAPI core_loop(LPVOID lpParam) {
         LeaveCriticalSection(&cpu_cores_cs);
 
         if (should_execute) {
-    // Add comprehensive validation to prevent crashes
-    if (p && p->program_counter < p->num_inst && 
-        p->instructions != NULL && p->variables != NULL) {
-        
-        // Extra validation of instruction data
-        Instruction *inst = &p->instructions[p->program_counter];
-        if (inst) {
-            execute_instruction(p, config);
-            p->ticks_ran_in_quantum++;
+            if (p && p->program_counter < p->num_inst && 
+                p->instructions != NULL && p->variables != NULL) {
+                
+                Instruction *inst = &p->instructions[p->program_counter];
+                if (inst) {
+                    execute_instruction(p, config);
+                    p->ticks_ran_in_quantum++;
+                }
+            } else {
+                // Silently handle invalid process - NO PRINTS!
+                EnterCriticalSection(&cpu_cores_cs);
+                if (p) {
+                    cpu_cores[core_id] = NULL;
+                    update_cpu_util(-1);
+                }
+                LeaveCriticalSection(&cpu_cores_cs);
+            }
         }
-    } else {
-        // Log the invalid process to help debugging
-        EnterCriticalSection(&cpu_cores_cs);
-        printf("[ERROR] Invalid process data detected on core %d. Removing.\n", core_id);
-        if (p) {
-            printf("[ERROR] Process %s (PID: %d) has invalid data: PC=%d, num_inst=%d\n",
-                   p->name, p->pid, p->program_counter, p->num_inst);
-            cpu_cores[core_id] = NULL;
-            update_cpu_util(-1);
-        }
-        LeaveCriticalSection(&cpu_cores_cs);
-    }
-}
 
-        // Handle process completion - CRITICAL SECTION FOR ENTIRE BLOCK
+        // Handle process completion
         EnterCriticalSection(&cpu_cores_cs);
         p = cpu_cores[core_id];
         if (p && p->program_counter >= p->num_inst && p->for_depth == 0) {
@@ -544,18 +524,15 @@ DWORD WINAPI core_loop(LPVOID lpParam) {
             cleanup_process(p);
             add_finished_process(p);
             
-            // *** FIX: Free memory BEFORE setting to NULL ***
             free_process_memory(p, &memory_head);
             update_free_memory();
-            update_cpu_util(-1);  // Add this to maintain proper CPU stats
+            update_cpu_util(-1);
             
-            // *** FIX: Set to NULL AFTER freeing memory ***
             cpu_cores[core_id] = NULL;
             p = NULL;
         }
         LeaveCriticalSection(&cpu_cores_cs);
 
-        // Small delay to prevent tight spinning and reduce CPU usage
         Sleep(1);
     }
     return 0;
