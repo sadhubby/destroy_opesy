@@ -65,7 +65,7 @@ void runCLI() {
             char pname[64];
             int memsize;
             if (sscanf(command + 10, "%63s %d", pname, &memsize) == 2) {
-                screen_start(pname, memsize);
+                screen_start(pname, memsize, config);
             } else {
                 printColor(yellow, "Usage: screen -s <process_name> <memory_size>\n");
                 printColor(yellow, "Memory size must be a power of 2 between 64 and 65536 bytes.\n");
