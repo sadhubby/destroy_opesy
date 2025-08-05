@@ -423,7 +423,7 @@ void screen_list(int num_cores, Process **cpu_cores, int finished_count, Process
             char timebuf[32];
             struct tm *tm_info = localtime(&p->last_exec_time);
             strftime(timebuf, sizeof(timebuf), "%Y-%m-%d %H:%M:%S", tm_info);
-            printf("P%-16s %-24s %-10d %d/%d\n", p->name, timebuf, i, p->program_counter + 1, p->num_inst);
+            printf("%-16s %-24s %-10d %d/%d\n", p->name, timebuf, i, p->program_counter + 1, p->num_inst);
         }
     }
 
@@ -438,7 +438,7 @@ void screen_list(int num_cores, Process **cpu_cores, int finished_count, Process
             char timebuf[32];
             struct tm *tm_info = localtime(&p->last_exec_time);
             strftime(timebuf, sizeof(timebuf), "%Y-%m-%d %H:%M:%S", tm_info);
-            printf("P%-16s %-24s %-10s     %d/%d\n", p->name, timebuf, "Finished", p->program_counter, p->num_inst);
+            printf("%-16s %-24s %-10s     %d/%d\n", p->name, timebuf, "Finished", p->program_counter, p->num_inst);
         }
     }
 }
@@ -489,6 +489,11 @@ void report_utilization(int num_cores, Process **cpu_cores, int finished_count, 
             char timebuf[32];
             struct tm *tm_info = localtime(&p->last_exec_time);
             strftime(timebuf, sizeof(timebuf), "%Y-%m-%d %H:%M:%S", tm_info);
+
+            if (p->program_counter >= p->num_inst) { 
+                p->program_counter = p->num_inst - 1; // Ensure we don't go out of bounds
+            }
+
             fprintf(fp, "P%-16s %-24s %-10d %d/%d\n", 
                 p->name, timebuf, i, p->program_counter + 1, p->num_inst);
         }

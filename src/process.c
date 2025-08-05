@@ -155,11 +155,13 @@ void execute_instruction(Process *p, Config config) {
             if (v) {
                 char logMessage[256];
                 snprintf(logMessage, sizeof(logMessage), "Hello world from %s! Value of %s = %u\n", p->name, v->name, v->value);
-                strcpy(p->logs[p->num_logs].message, logMessage);
+                strncpy(p->logs[p->num_logs].message, logMessage, sizeof(p->logs[p->num_logs].message) - 1);
+                p->logs[p->num_logs].message[sizeof(p->logs[p->num_logs].message) - 1] = '\0';
             } else {
                 char logMessage[256];
                 snprintf(logMessage, sizeof(logMessage), "Hello world from %s!\n", p->name);
-                strcpy(p->logs[p->num_logs].message, logMessage);
+                strncpy(p->logs[p->num_logs].message, logMessage, sizeof(p->logs[p->num_logs].message) - 1);
+                p->logs[p->num_logs].message[sizeof(p->logs[p->num_logs].message) - 1] = '\0';
             }
 
             p->logs[p->num_logs].last_exec_time = time(NULL);
@@ -311,11 +313,13 @@ Instruction parse_add_sub(const char *args, int is_add) {
     int v2, v3;
     sscanf(args, "%49[^,],%49[^,],%49[^,]", var1, var2, var3);
     trim(var1); trim(var2); trim(var3);
-    strcpy(inst.arg1, var1);
+    strncpy(inst.arg1, var1, sizeof(inst.arg1) - 1);
+    inst.arg1[sizeof(inst.arg1) - 1] = '\0';
 
     // make sure var3 isn't empty
     if (var3[0] == '\0') {
-        strcpy(var3, "0");
+        strncpy(var3, "0", sizeof(var3) - 1);
+        var3[sizeof(var3) - 1] = '\0';
     }
 
     // Parse as raw ints first then variables
@@ -323,14 +327,16 @@ Instruction parse_add_sub(const char *args, int is_add) {
         inst.arg2[0] = '\0';
         inst.value = v2;
     } else {
-        strcpy(inst.arg2, var2);
+        strncpy(inst.arg2, var2, sizeof(inst.arg2) - 1);
+        inst.arg2[sizeof(inst.arg2) - 1] = '\0';
     }
     
     if (sscanf(var3, "%d", &v3) == 1) {
         inst.arg3[0] = '\0';
         inst.value = v3;
     } else {
-        strcpy(inst.arg3, var3);
+        strncpy(inst.arg3, var3, sizeof(inst.arg3) - 1);
+        inst.arg3[sizeof(inst.arg3) - 1] = '\0';
     }
     return inst;
 }
@@ -343,7 +349,8 @@ Instruction parse_print(const char *args) {
     // Extract the variable
     const char *plus = strchr(args, '+');
     if (plus) {
-        strcpy(inst.arg1, plus + 1);
+        strncpy(inst.arg1, plus + 1, sizeof(inst.arg1) - 1);
+        inst.arg1[sizeof(inst.arg1) - 1] = '\0';
         trim(inst.arg1);
     } else {
         inst.arg1[0] = '\0';
@@ -494,7 +501,7 @@ Process *generate_dummy_process(Config config) {
     int assigned_pid = ++next_pid;  // Simple increment for now
     
     // *** FIX: Proper string initialization ***
-    snprintf(p->name, MAX_PROCESS_NAME - 1, "%d", assigned_pid);
+    snprintf(p->name, MAX_PROCESS_NAME - 1, "P%d", assigned_pid);
     p->name[MAX_PROCESS_NAME - 1] = '\0';  // Ensure null termination
     
     p->pid = assigned_pid;
