@@ -188,47 +188,47 @@ int handle_page_fault(Process *p, uint32_t virtual_address) {
 }
 
 
-int memory_write(uint32_t address, uint16_t value, Process *p) {
-    if (!is_valid_memory_address(address)) {
-        printf("[ACCESS VIOLATION] Process %d tried to write to 0x%X\n", p->pid, address);
-        return 0;
-    }
-    uint32_t offset = address - p->mem_base;
-    uint32_t page = offset / memory.mem_per_frame;
-    uint32_t page_offset = offset % memory.mem_per_frame;
+// int memory_write(uint32_t address, uint16_t value, Process *p) {
+//    if (!is_valid_memory_address(address)) {
+//        printf("[ACCESS VIOLATION] Process %d tried to write to 0x%X\n", p->pid, address);
+//        return 0;
+//    }
+//    uint32_t offset = address - p->mem_base;
+//    uint32_t page = offset / memory.mem_per_frame;
+//    uint32_t page_offset = offset % memory.mem_per_frame;
+//
+//    if (page >= p->num_pages || !p->page_table[page].valid) {
+//        if (!handle_page_fault(p, address)) return 0;
+//    }
+//
+//    int physical_address = p->page_table[page].frame_number * memory.mem_per_frame + page_offset;
+//    memory_space[physical_address / 2] = value;
+//    frame_table[p->page_table[page].frame_number].last_used_tick = CPU_TICKS;
+//    return 1;
+//}
 
-    if (page >= p->num_pages || !p->page_table[page].valid) {
-        if (!handle_page_fault(p, address)) return 0;
-    }
-
-    int physical_address = p->page_table[page].frame_number * memory.mem_per_frame + page_offset;
-    memory_space[physical_address / 2] = value;
-    frame_table[p->page_table[page].frame_number].last_used_tick = CPU_TICKS;
-    return 1;
-}
-
-uint16_t memory_read(uint32_t address, Process *p, int *success) {
-    if (!is_valid_memory_address(address)) {
-        printf("[ACCESS VIOLATION] Process %d tried to read from 0x%X\n", p->pid, address);
-        *success = 0;
-        return 0;
-    }
-    uint32_t offset = address - p->mem_base;
-    uint32_t page = offset / memory.mem_per_frame;
-    uint32_t page_offset = offset % memory.mem_per_frame;
-
-    if (page >= p->num_pages || !p->page_table[page].valid) {
-        if (!handle_page_fault(p, address)) {
-            *success = 0;
-            return 0;
-        }
-    }
-
-    int physical_address = p->page_table[page].frame_number * memory.mem_per_frame + page_offset;
-    frame_table[p->page_table[page].frame_number].last_used_tick = CPU_TICKS;
-    *success = 1;
-    return memory_space[physical_address / 2];
-}
+// uint16_t memory_read(uint32_t address, Process *p, int *success) {
+//    if (!is_valid_memory_address(address)) {
+//        printf("[ACCESS VIOLATION] Process %d tried to read from 0x%X\n", p->pid, address);
+//        *success = 0;
+//        return 0;
+//    }
+//    uint32_t offset = address - p->mem_base;
+//    uint32_t page = offset / memory.mem_per_frame;
+//    uint32_t page_offset = offset % memory.mem_per_frame;
+//
+//    if (page >= p->num_pages || !p->page_table[page].valid) {
+//        if (!handle_page_fault(p, address)) {
+//            *success = 0;
+//            return 0;
+//        }
+//    }
+//
+//    int physical_address = p->page_table[page].frame_number * memory.mem_per_frame + page_offset;
+//    frame_table[p->page_table[page].frame_number].last_used_tick = CPU_TICKS;
+//    *success = 1;
+//    return memory_space[physical_address / 2];
+//}
 
 // Recalculate free memory and active processes by walking the list
 void update_free_memory() {
