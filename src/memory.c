@@ -431,3 +431,44 @@ void vmstat(Memory *mem, CPUStats *stats) {
     printf("%10d %4s %s\n", stats->num_paged_in, "", "num paged in");
     printf("%10d %4s %s\n", stats->num_paged_out, "", "num paged out");
 }
+
+bool is_memory_under_pressure() {
+    if (!memory_head) return false;
+    
+    uint64_t free_memory = 0;
+    MemoryBlock* curr = memory_head;
+    while (curr) {
+        if (!curr->occupied) {
+            free_memory += (curr->end - curr->base + 1);
+        }
+        curr = curr->next;
+    }
+    
+    // Trigger swapping when less than 25% memory is free
+    return (free_memory < (memory.total_memory / 4));
+}
+
+// Add this function to find a victim process for swapping
+Process* find_victim_process_for_swapping() {
+    // Look for sleeping processes first
+    for (uint32_t i = 0; i < num_processes; i++) {
+        Process *p = process_table[i];
+        if (p && p->state == SLEEPING && p->in_memory) {
+            return p;
+        }
+    }
+    
+    // If no sleeping processes, find the least recently used running process
+    Process *victim = NULL;
+    time_t oldest_time = time(NULL);
+    
+    for (uint32_t i = 0; i < num_processes; i++) {
+        Process *p = process_table[i];
+        if (p && p->in_memory && p->last_exec_time < oldest_time) {
+            oldest_time = p->last_exec_time;
+            victim = p;
+        }
+    }
+    
+    return victim;
+}
