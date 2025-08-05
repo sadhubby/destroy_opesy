@@ -155,26 +155,26 @@ void execute_instruction(Process *p, Config config) {
             p->state = SLEEPING;
             p->sleep_until_tick = CPU_TICKS + inst->value;
         }
-        // read
-        // case READ: {
-        //     uint32_t address = 0;
-        //     sscanf(inst->arg2, "%x", &address);
-        //     int success = 0;
-        //     uint16_t value = memory_read(address, p, &success);
-        //     if (success) {
-        //         Variable *v = get_variable(p, inst->arg1);
-        //         if (v) v->value = value;
-        //     }
-        //     break;
-        // }
-        // // writee
-        // case WRITE: {
-        //     uint32_t address = 0;
-        //     sscanf(inst->arg1, "%x", &address);
-        //     uint16_t value = CLAMP_UINT16(inst->value);
-        //     memory_write(address, value, p);
-        //     break;
-        // }
+         // read
+         case READ: {
+             uint32_t address = 0;
+             sscanf(inst->arg2, "%x", &address);
+             int success = 0;
+             uint16_t value = memory_read(address, p, &success);
+             if (success) {
+                 Variable *v = get_variable(p, inst->arg1);
+                 if (v) v->value = value;
+             }
+             break;
+         }
+         // writee
+         case WRITE: {
+             uint32_t address = 0;
+             sscanf(inst->arg1, "%x", &address);
+             uint16_t value = CLAMP_UINT16(inst->value);
+             memory_write(address, value, p);
+             break;
+         }
 
     }
 
@@ -397,8 +397,7 @@ int parse_instruction_list(const char *instrs, Instruction *out, int max_count) 
                 out[count++] = parse_sleep(args);
             } else if (strcmp(cmd, "FOR") == 0) {
                 out[count++] = parse_for(args);
-            }
-            else if (strcmp(cmd, "READ") == 0) {
+            }else if (strcmp(cmd, "READ") == 0) {
                 out[count++] = parse_read(args);
             } else if (strcmp(cmd, "WRITE") == 0) {
                 out[count++] = parse_write(args);

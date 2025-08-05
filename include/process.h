@@ -119,6 +119,8 @@ Instruction parse_declare(const char *args);
 Instruction parse_add_sub(const char *args, int is_add);
 Instruction parse_print(const char *args);
 Instruction parse_sleep(const char *args);
+Instruction parse_read(const char *args);
+Instruction parse_write(const char *args);
 
 int parse_instruction_list(const char *instrs, Instruction *out, int max_count);
 Instruction parse_for(const char *args);
