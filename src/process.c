@@ -167,7 +167,7 @@ void execute_instruction(Process *p, Config config) {
              }
              break;
          }
-         // writee
+         // write
          case WRITE: {
              uint32_t address = 0;
              sscanf(inst->arg1, "%x", &address);
