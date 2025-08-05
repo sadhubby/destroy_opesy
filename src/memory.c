@@ -105,36 +105,73 @@ int handle_page_fault(Process *p, uint32_t virtual_address) {
         }
     }
 
-    // No free frames - need to select a victim using LRU
-    int victim_idx = 0;
-    for (int i = 1; i < num_frames; i++) {
-        if (frame_table[i].last_used_tick < frame_table[victim_idx].last_used_tick)
-            victim_idx = i;
-    }
-
-    int victim_pid = frame_table[victim_idx].pid;
-    int victim_page = frame_table[victim_idx].page_number;
-
-    // Find the process that owns the victim frame
+    // No free frames - need to select a victim using Enhanced LRU
+    // printf("[Page Fault] No free frames available. Selecting victim frame...\n");
+    
+    int victim_idx = -1;
+    uint64_t oldest_access = UINT64_MAX;
     Process *victim_process = NULL;
-    for (int i = 0; i < num_processes; i++) {
-        if (process_table[i] && process_table[i]->pid == victim_pid) {
-            victim_process = process_table[i];
+
+    // First try to find pages from finished or sleeping processes
+    for (int i = 0; i < num_frames; i++) {
+        if (!frame_table[i].occupied) continue;
+
+        // Find the process that owns this frame
+        Process *owner = NULL;
+        for (int j = 0; j < num_processes; j++) {
+            if (process_table[j] && process_table[j]->pid == frame_table[i].pid) {
+                owner = process_table[j];
+                break;
+            }
+        }
+
+        // Prefer pages from finished/sleeping processes
+        if (owner && (owner->state == FINISHED || owner->state == SLEEPING)) {
+            victim_idx = i;
+            victim_process = owner;
             break;
+        }
+
+        // Otherwise, track the least recently used frame
+        if (frame_table[i].last_used_tick < oldest_access) {
+            oldest_access = frame_table[i].last_used_tick;
+            victim_idx = i;
+            victim_process = owner;
         }
     }
 
-    if (victim_process) {
-        // Save the victim frame's contents to backing store
-        uint32_t victim_frame_start = victim_idx * memory.mem_per_frame / 2;
-        uint32_t victim_page_start = victim_process->mem_base + (victim_page * memory.mem_per_frame);
+    if (victim_idx == -1 || !victim_process) {
+        printf("[ERROR] Failed to find a valid victim frame\n");
+        LeaveCriticalSection(&backing_store_cs);
+        return 0;
+    }
+
+    int victim_page = frame_table[victim_idx].page_number;
+    printf("[Page Replacement] Evicting page %d of process %d from frame %d\n",
+           victim_page, victim_process->pid, victim_idx);
+
+    // Save the victim frame's contents to backing store
+    uint32_t victim_frame_start = victim_idx * memory.mem_per_frame / 2;
+    uint32_t victim_page_start = victim_process->mem_base + (victim_page * memory.mem_per_frame);
+
+    // Copy frame contents to a temporary buffer
+    uint16_t *page_buffer = malloc(memory.mem_per_frame);
+    if (page_buffer) {
+        memcpy(page_buffer, &memory_space[victim_frame_start], memory.mem_per_frame);
         
         // Mark the page as no longer in memory
         victim_process->page_table[victim_page].valid = false;
         
         // Write victim process state to backing store
         write_process_to_backing_store(victim_process);
+        
+        free(page_buffer);
         stats.num_paged_out++;
+        
+        printf("[Page Out] Successfully saved page %d of process %d to backing store\n",
+               victim_page, victim_process->pid);
+    } else {
+        printf("[ERROR] Failed to allocate buffer for page out operation\n");
     }
 
     // Clear the frame and load the new page
