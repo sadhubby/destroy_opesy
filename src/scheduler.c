@@ -119,176 +119,150 @@ Process *dequeue_ready() {
 // fcfs scheduling
 void schedule_fcfs() {
 
-    // // assign ready processes to free CPUs
-    // EnterCriticalSection(&cpu_cores_cs);
-    // for (int i = 0; i < num_cores; i++) {
-    //     // If the core has no process, or the process is FINISHED, set to NULL
-    //     if (cpu_cores[i] == NULL || (cpu_cores[i] && cpu_cores[i]->state == FINISHED)) {
-    //         update_cpu_util(-1);
-    //         cpu_cores[i] = NULL;
-    //         free_process_memory(cpu_cores[i], &memory_head);
-    //         update_free_memory();
-    //     }
-
-    //     // Only assign to free core
-    //     if (cpu_cores[i] == NULL) {
-    //         Process *next = dequeue_ready();
-    //         if (next && memory.free_memory >= next->memory_allocation) {
-    //             update_cpu_util(1);
-    //             cpu_cores[i] = next;
-    //             if (next->state == READY) {
-    //                 next->state = RUNNING;
-    //             }
-    //             update_free_memory();
-
-    //         }
-    //     }
-    // }
-
-    // // Wake up sleeping processes before executing instructions
-    // for (int i = 0; i < num_cores; i++) {
-    //     Process *p = cpu_cores[i];
-    //     if (p && p->state == SLEEPING && CPU_TICKS >= p->sleep_until_tick) {
-    //         p->state = RUNNING;
-    //     }
-    // }
-
-    // LeaveCriticalSection(&cpu_cores_cs);
-}
-
-/* void schedule_rr () {
-
-    // assign ready processes to free CPUs
-    
     EnterCriticalSection(&cpu_cores_cs);
 
-    for (int i = 0; i < num_cores; i++) {
-        // If the core has no process, or the process is FINISHED, set to NULL
-        if (cpu_cores[i] && cpu_cores[i]->state == FINISHED) {
-            update_cpu_util(-1);
-            cpu_cores[i] = NULL;
-            free_process_memory(cpu_cores[i], &memory_head);
-            update_free_memory();
-        }
-
-        // Only assign to free core
-
-        if (cpu_cores[i] == NULL) {
-            Process *next = dequeue_ready();
-            
-            if (next && (try_allocate_memory(next, memory_head) || next->in_memory == 1)) {
-                // printf("[DEBUG] Scheduled: %s (PID: %d) on core %d\n", next->name, next->pid, i);
-                update_cpu_util(1);
-                cpu_cores[i] = next;
-                switch_tick = CPU_TICKS + quantum;
-                if (next->state == READY) {
-                    next->state = RUNNING;
-                }
-                update_free_memory();
-                next->in_memory = 1;
-            }
-            else if (next){
-                // printf("[DEBUG] Could not allocate memory for: %s (PID: %d)\n", next->name, next->pid);
-                enqueue_ready(next);
-            }
-        }
-    }
-
-    // Wake up sleeping processes before executing instructions
+    // Wake up sleeping processes
     for (int i = 0; i < num_cores; i++) {
         Process *p = cpu_cores[i];
         if (p && p->state == SLEEPING && CPU_TICKS >= p->sleep_until_tick) {
             p->state = RUNNING;
         }
-
-        // put back to ready queue
-        if (p && p->state == RUNNING && CPU_TICKS >= switch_tick) {
-            update_cpu_util(-1);
-            cpu_cores[i] = NULL;
-            p->state = READY;
-            enqueue_ready(p);
-        }
     }
 
-    LeaveCriticalSection(&cpu_cores_cs);
-} */
-/* void schedule_rr () {
-
-    // assign ready processes to free CPUs
-    EnterCriticalSection(&cpu_cores_cs);
-
+    // 1. Assign ready processes to free cores
     for (int i = 0; i < num_cores; i++) {
-        // If the core has no process, or the process is FINISHED, set to NULL
-        if (cpu_cores[i] && cpu_cores[i]->state == FINISHED) {
-            update_cpu_util(-1);
-            cpu_cores[i] = NULL;
-        }
-
-        // Only assign to free core
         if (cpu_cores[i] == NULL) {
             Process *next = dequeue_ready();
+            if (!next) continue;
 
-            // Try to allocate memory for the process
-            if (next && !(try_allocate_memory(next, memory_head) || next->in_memory == 1)) {
-                // Not enough memory: swap out a process to backing store
-                int victim_found = 0;
-                for (int j = 0; j < num_cores; j++) {
-                    Process *victim = cpu_cores[j];
-                    if (victim && victim->state == RUNNING) {
-                        write_process_to_backing_store(victim);
-                        free_process_memory(victim, &memory_head);
-                        cpu_cores[j] = NULL;
-                        victim_found = 1;
-                        break;
-                    }
-                }
-                // Try again to allocate memory for 'next'
-                if (victim_found && (try_allocate_memory(next, memory_head) || next->in_memory == 1)) {
+            // Validate process data before scheduling
+            if (next->in_memory == 1 || try_allocate_memory(next, memory_head)) {
+                // Extra validation to prevent crashes
+                if (next->instructions != NULL && next->variables != NULL) {
                     update_cpu_util(1);
                     cpu_cores[i] = next;
-                    switch_tick = CPU_TICKS + quantum;
-                    if (next->state == READY) {
-                        next->state = RUNNING;
-                    }
-                    update_free_memory();
-                    next->in_memory = 1;
-                } else {
-                    // Still can't allocate, put back in ready queue or backing store
-                    write_process_to_backing_store(next);
-                }
-            } else if (next && (try_allocate_memory(next, memory_head) || next->in_memory == 1)) {
-                update_cpu_util(1);
-                cpu_cores[i] = next;
-                switch_tick = CPU_TICKS + quantum;
-                if (next->state == READY) {
                     next->state = RUNNING;
+                    next->last_exec_time = time(NULL); // Set execution time
+                    
+                    if (next->in_memory == 0) {
+                        next->in_memory = 1;
+                        update_free_memory();
+                    }
+                } else {
+                    printf("[ERROR] Process P%s has invalid instruction/variable arrays\n", next->name);
+                    // Don't schedule this process
+                    if (next->instructions) free(next->instructions);
+                    if (next->variables) free(next->variables);
+                    free(next);
                 }
-                update_free_memory();
-                next->in_memory = 1;
-            } else if (next) {
-                enqueue_ready(next);
+            } else {
+                // Can't allocate memory - send to backing store
+                write_process_to_backing_store(next);
+                // if (next->instructions) free(next->instructions);
+                // if (next->variables) free(next->variables);
+                free(next);
             }
         }
     }
 
-    // Wake up sleeping processes before executing instructions
-    for (int i = 0; i < num_cores; i++) {
-        Process *p = cpu_cores[i];
-        if (p && p->state == SLEEPING && CPU_TICKS >= p->sleep_until_tick) {
-            p->state = RUNNING2;
+    // 3. Try to swap in processes from backing store (periodically)
+    if (CPU_TICKS > 0 && CPU_TICKS % 50 == 0) {
+        Process *swapped_in = read_first_process_from_backing_store();
+        if (swapped_in) {
+            // Validate the process from backing store
+            if (swapped_in->num_inst <= 0 || swapped_in->num_inst > 1000000) {
+                printf("[ERROR] Invalid process read from backing store: num_inst=%d\n", 
+                       swapped_in->num_inst);
+                free(swapped_in);
+            } else if (try_allocate_memory(swapped_in, memory_head)) {
+                // Successfully allocated memory
+                remove_first_process_from_backing_store();
+                swapped_in->in_memory = 1;
+                enqueue_ready(swapped_in);
+                update_free_memory();
+            } else {
+                // Memory full - find a victim to swap out
+                Process *victim = NULL;
+                int victim_core = -1;
+                
+                for (int j = 0; j < num_cores; j++) {
+                    if (cpu_cores[j] && cpu_cores[j]->state == RUNNING) {
+                        victim = cpu_cores[j];
+                        victim_core = j;
+                        break;
+                    }
+                }
+                
+                if (victim) {
+                    // Only write to backing store if we have valid data
+                    if (victim->instructions && victim->variables) {
+                        write_process_to_backing_store(victim);
+                    }
+                    
+                    free_process_memory(victim, &memory_head);
+                    cpu_cores[victim_core] = NULL;
+                    update_cpu_util(-1);
+                    
+                    if (victim->instructions) free(victim->instructions);
+                    if (victim->variables) free(victim->variables);
+                    free(victim);
+                    
+                    // Try again with the new free memory
+                    if (try_allocate_memory(swapped_in, memory_head)) {
+                        remove_first_process_from_backing_store();
+                        swapped_in->in_memory = 1;
+                        enqueue_ready(swapped_in);
+                        update_free_memory();
+                    } else {
+                        if (swapped_in->instructions) free(swapped_in->instructions);
+                        if (swapped_in->variables) free(swapped_in->variables);
+                        free(swapped_in);
+                    }
+                } else {
+                    // No victim found, free the swapped-in process
+                    if (swapped_in->instructions) free(swapped_in->instructions);
+                    if (swapped_in->variables) free(swapped_in->variables);
+                    free(swapped_in);
+                }
+            }
         }
+    }
 
-        // put back to ready queue
-        if (p && p->state == RUNNING && CPU_TICKS >= switch_tick) {
-            update_cpu_util(-1);
-            cpu_cores[i] = NULL;
-            p->state = READY;
-            enqueue_ready(p);
+    // 4. If all cores are idle and ready queue is empty, try to swap in from backing store
+    bool all_idle = true;
+    for (int i = 0; i < num_cores; i++) {
+        if (cpu_cores[i] && cpu_cores[i]->state == RUNNING) {
+            all_idle = false;
+            break;
+        }
+    }
+    
+    if (all_idle && ready_queue.size == 0) {
+        Process *swapped_in = read_first_process_from_backing_store();
+        if (swapped_in) {
+            // Validate the process
+            if (swapped_in->num_inst <= 0 || swapped_in->num_inst > 1000000) {
+                printf("[ERROR] Invalid process read from backing store: num_inst=%d\n", 
+                       swapped_in->num_inst);
+                free(swapped_in);
+            } else if (try_allocate_memory(swapped_in, memory_head)) {
+                // Success - remove from backing store and add to ready queue
+                remove_first_process_from_backing_store();
+                swapped_in->in_memory = 1;
+                enqueue_ready(swapped_in);
+                update_free_memory();
+            } else {
+                // Failed to allocate memory
+                if (swapped_in->instructions) free(swapped_in->instructions);
+                if (swapped_in->variables) free(swapped_in->variables);
+                free(swapped_in);
+            }
         }
     }
 
     LeaveCriticalSection(&cpu_cores_cs);
-} */
+}
+
 void schedule_rr() {
     EnterCriticalSection(&cpu_cores_cs);
 

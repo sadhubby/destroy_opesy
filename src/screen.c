@@ -28,15 +28,15 @@ void screen_process_smi(Process *p) {
     printf("Logs:\n");
 
     // Print the execution logs
-    for (int i = 0; i < p->num_logs; i++) {
-        if (p->logs[i].message[0] != '\0') {  // Only print non-empty logs
-            printf("[");
-            print_timestamp(p->logs[i].timestamp);
-            printf("] Core %d: %s\n", 
-                  p->logs[i].core_id,
-                  p->logs[i].message);
-        }
-    }
+    // for (int i = 0; i < p->num_logs; i++) {
+    //     if (p->logs[i].message[0] != '\0') {  // Only print non-empty logs
+    //         printf("[");
+    //         print_timestamp(p->logs[i].timestamp);
+    //         printf("] Core %d: %s\n", 
+    //               p->logs[i].core_id,
+    //               p->logs[i].message);
+    //     }
+    // }
 
     // If process is finished, show the Finished! message
     if (p->state == FINISHED) {
