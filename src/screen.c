@@ -6,10 +6,7 @@
 #include "screen.h"
 #include "scheduler.h"
 #include "config.h"
-<<<<<<< HEAD
 #include "process.h"
-=======
->>>>>>> main
 
 static int process_count = 0;
 
@@ -50,105 +47,6 @@ void screen_process_smi(Process *p) {
     }
 }
 
-Process *generate_process(Config config, int memory_allocation) {
-    int min_ins = config.min_ins > 1 ? config.min_ins : 1;
-    int max_ins = config.max_ins > min_ins ? config.max_ins : min_ins;
-    int num_inst = min_ins + rand() % (max_ins - min_ins + 1);
-
-    Process *p = (Process *)calloc(1, sizeof(Process));
-    if (!p) {
-        printf("[ERROR] Failed to allocate memory for process!\n");
-        return NULL;
-    }
-    
-    p->state = READY;
-    p->program_counter = 0;
-    p->num_var = 0;
-    p->num_inst = num_inst;
-    p->variables_capacity = 8;
-    p->in_memory = 0;
-    p->for_depth = 0;  // *** FIX: Initialize for_depth ***
-    p->ticks_ran_in_quantum = 0;  // *** FIX: Initialize quantum ticks ***
-    p->last_exec_time = 0;  // *** FIX: Initialize to 0, will be set when scheduled ***
-    p->num_pages = memory_allocation / config.mem_per_frame;
-    p->page_table = (PageTableEntry *)calloc(p->num_pages, sizeof(PageTableEntry));
-
-    // *** FIX: Safer memory allocation with error checking ***
-    p->variables = (Variable *)calloc(p->variables_capacity, sizeof(Variable));
-    if (!p->variables) {
-        printf("[ERROR] Failed to allocate variables array!\n");
-        free(p);
-        return NULL;
-    }
-
-    p->instructions = (Instruction *)calloc(num_inst, sizeof(Instruction));
-    if (!p->instructions) {
-        printf("[ERROR] Failed to allocate instructions array!\n");
-        free(p->variables);
-        free(p);
-        return NULL;
-    }
-
-    p->memory_allocation = memory_allocation;
-
-    // Seed random only once
-    static int seeded = 0;
-    if (!seeded) { 
-        srand((unsigned int)time(NULL)); 
-        seeded = 1; 
-    }
-
-    // Generate random instructions with bounds checking
-    for (int i = 0; i < num_inst; i++) {
-        int t = rand() % 6; // 0=DECLARE, 1=ADD, 2=SUBTRACT, 3=PRINT, 4=SLEEP, 5=FOR
-        char buf[64];
-        
-        // *** FIX: Ensure we don't access invalid indices ***
-        int v2_idx = (i > 0) ? rand() % i : 0;
-        int v3_is_var = rand() % 2;
-        int v3_idx = (i > 0) ? rand() % i : 0;
-        int v3_val = rand() % 100;
-        
-        char v3_buf[16];
-        if (v3_is_var && i > 0) {
-            snprintf(v3_buf, sizeof(v3_buf), "v%d", v3_idx);
-        } else {
-            snprintf(v3_buf, sizeof(v3_buf), "%d", v3_val);
-        }
-
-        // *** FIX: Initialize instruction struct to zero ***
-        memset(&p->instructions[i], 0, sizeof(Instruction));
-
-        switch (t) {
-            case 0: // DECLARE
-                snprintf(buf, sizeof(buf), "v%d,%d", i, rand() % 100);
-                p->instructions[i] = parse_declare(buf);
-                break;
-            case 1: // ADD
-                snprintf(buf, sizeof(buf), "v%d,v%d,%s", i, v2_idx, v3_buf);
-                p->instructions[i] = parse_add_sub(buf, 1);
-                break;
-            case 2: // SUBTRACT
-                snprintf(buf, sizeof(buf), "v%d,v%d,%s", i, v2_idx, v3_buf);
-                p->instructions[i] = parse_add_sub(buf, 0);
-                break;
-            case 3: // PRINT
-                snprintf(buf, sizeof(buf), "+v%d", (i > 0) ? rand() % i : 0);
-                p->instructions[i] = parse_print(buf);
-                break;
-            case 4: // SLEEP
-                snprintf(buf, sizeof(buf), "%d", 1 + rand() % 10);
-                p->instructions[i] = parse_sleep(buf);
-                break;
-            case 5: // FOR
-                snprintf(buf, sizeof(buf), "[v%d,v%d];%d", i, v2_idx, 1 + rand() % 5);
-                p->instructions[i] = parse_for(buf);
-        }
-    }
-
-    return p;
-}
-
 // screen -s
 void screen_start(const char *name, int memory_size, Config config) {
 
@@ -168,21 +66,27 @@ void screen_start(const char *name, int memory_size, Config config) {
     }
 
     // create a new process and add to table
-    Process *p = generate_process(config, memory_size);
+    Process *p = malloc(sizeof(Process));
+    if (!p) {
+        printColor(yellow, "Failed to allocate memory for new process.\n");
+        return;
+    }
+
+    // Initialize process with zeroes
+    memset(p, 0, sizeof(Process));
     
     // Set basic process info with proper string handling
+    memset(p->name, 0, sizeof(p->name));  // Clear the name array first
     strncpy(p->name, name, sizeof(p->name) - 1);
     p->name[sizeof(p->name) - 1] = '\0';
-<<<<<<< HEAD
-    p->pid = process_count + 1;
+    
+    // Use thread-safe PID assignment
+    p->pid = ++next_pid;  // Get unique PID
+    
     p->program_counter = 0;
     p->num_inst = config.min_ins + rand() % (config.max_ins - config.min_ins + 1); // Randomized instruction length, or from config
     p->last_exec_time = time(NULL);
     p->state = READY;
-=======
-    process_count++;
-    p->pid = process_count;
->>>>>>> main
     p->is_in_screen = true;
     p->for_depth = 0;
     p->ticks_ran_in_quantum = 0;
@@ -209,7 +113,6 @@ void screen_start(const char *name, int memory_size, Config config) {
     }
     p->num_logs = 0;
 
-<<<<<<< HEAD
     // Generate some dummy instructions including PRINT
     p->instructions = malloc(sizeof(Instruction) * p->num_inst);
     if (!p->instructions) {
@@ -282,6 +185,28 @@ void screen_start(const char *name, int memory_size, Config config) {
     p->memory_allocation = memory_size;
     p->mem_base = 0;  // Base address for this process
     p->mem_limit = memory_size;  // Limit is the size of allocated memory
+    
+    // Initialize page table for virtual memory
+    p->num_pages = memory_size / config.mem_per_frame;
+    if (memory_size % config.mem_per_frame != 0) {
+        p->num_pages++; // Round up if not exact multiple
+    }
+    
+    p->page_table = (PageTableEntry *)calloc(p->num_pages, sizeof(PageTableEntry));
+    if (!p->page_table) {
+        printColor(yellow, "Failed to allocate memory for page table.\n");
+        free(p->instructions);
+        free(p->logs);
+        free(p->variables);
+        free(p);
+        return;
+    }
+    
+    // Initialize all page table entries as invalid
+    for (int i = 0; i < p->num_pages; i++) {
+        p->page_table[i].frame_number = -1;
+        p->page_table[i].valid = false;
+    }
 
     if (!scheduler_running) {
         init_ready_queue();
@@ -290,19 +215,10 @@ void screen_start(const char *name, int memory_size, Config config) {
     }
     // // Add to process table and start scheduling
     add_process(p);
+    process_count++;  // Increment local screen process count
     // EnterCriticalSection(&ready_queue_cs);
     enqueue_ready(p);  // Add to scheduler's ready queue
     // LeaveCriticalSection(&ready_queue_cs);
-=======
-    add_process(p);
-
-    // Clear console
-    // #ifdef _WIN32
-    //     system("cls");
-    // #else
-    //     system("clear");
-    // #endif
->>>>>>> main
 
     printf("Attached to new screen: %s (PID: %d)\n", p->name, p->pid);
     printf("Type 'exit' to return to main menu.\n");
@@ -445,9 +361,7 @@ void screen_create_with_code(const char *command_args) {
     
     memset(p, 0, sizeof(Process));
     strncpy(p->name, process_name, sizeof(p->name) - 1);
-    p->name[sizeof(p->name) - 1] = '\0';  // Ensure null termination
-    process_count++;
-    p->pid = process_count;
+    p->pid = process_count + 1;
     p->program_counter = 0;
     p->last_exec_time = time(NULL);
     

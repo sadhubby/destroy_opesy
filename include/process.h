@@ -8,7 +8,7 @@
 
 #define MAX_PROCESS_NAME 50
 #define MAX_LOOP_DEPTH 3
- 
+
 // track states of the different processes
 typedef enum {
     READY,
@@ -119,8 +119,6 @@ Instruction parse_declare(const char *args);
 Instruction parse_add_sub(const char *args, int is_add);
 Instruction parse_print(const char *args);
 Instruction parse_sleep(const char *args);
-Instruction parse_read(const char *args);
-Instruction parse_write(const char *args);
 
 int parse_instruction_list(const char *instrs, Instruction *out, int max_count);
 Instruction parse_for(const char *args);
@@ -128,8 +126,10 @@ Instruction parse_for(const char *args);
 extern Process **process_table;
 extern uint32_t num_processes;
 extern uint32_t process_table_size;
+extern volatile long next_pid;
 
 Process *generate_dummy_process(Config config);
 extern void print_process_info(Process *p);
+void remove_process_from_table(Process *p);
 
 #endif
