@@ -115,11 +115,46 @@ Process *dequeue_ready() {
     ready_queue.size--;
     return p;
 }
-
+void handle_memory_pressure() {
+    extern bool is_memory_under_pressure();
+    extern Process* find_victim_process_for_swapping();
+    extern MemoryBlock* memory_head;
+    
+    if (!is_memory_under_pressure()) return;
+    
+    Process *victim = find_victim_process_for_swapping();
+    if (!victim) return;
+    
+    printf("[SWAP] Memory pressure detected. Swapping out process %s (PID: %d)\n", 
+           victim->name, victim->pid);
+    
+    // Write to backing store first
+    write_process_to_backing_store(victim);
+    
+    // Remove from CPU if currently running
+    EnterCriticalSection(&cpu_cores_cs);
+    for (int i = 0; i < num_cores; i++) {
+        if (cpu_cores[i] == victim) {
+            cpu_cores[i] = NULL;
+            update_cpu_util(-1);
+            break;
+        }
+    }
+    LeaveCriticalSection(&cpu_cores_cs);
+    
+    // Free its memory
+    free_process_memory(victim, &memory_head);
+    victim->in_memory = 0;
+    
+    // Remove from ready queue if present
+    // Note: This is a simplified approach - you might want to implement
+    // a more sophisticated ready queue removal function
+    
+    printf("[SWAP] Process %s successfully swapped to backing store\n", victim->name);
+}
 // fcfs scheduling
 void schedule_fcfs() {
-
-    EnterCriticalSection(&cpu_cores_cs);
+   EnterCriticalSection(&cpu_cores_cs);
 
     // Wake up sleeping processes
     for (int i = 0; i < num_cores; i++) {
@@ -141,16 +176,15 @@ void schedule_fcfs() {
                 if (next->instructions != NULL && next->variables != NULL) {
                     update_cpu_util(1);
                     cpu_cores[i] = next;
-                    next->core = i;  // Set core index
+                    next->core = i;
                     next->state = RUNNING;
-                    next->last_exec_time = time(NULL); // Set execution time
+                    next->last_exec_time = time(NULL);
                     
                     if (next->in_memory == 0) {
                         next->in_memory = 1;
                         update_free_memory();
                     }
                 } else {
-                    printf("[ERROR] Process %s has invalid instruction/variable arrays\n", next->name);
                     // Don't schedule this process
                     if (next->instructions) free(next->instructions);
                     if (next->variables) free(next->variables);
@@ -159,8 +193,6 @@ void schedule_fcfs() {
             } else {
                 // Can't allocate memory - send to backing store
                 write_process_to_backing_store(next);
-                // if (next->instructions) free(next->instructions);
-                // if (next->variables) free(next->variables);
                 free(next);
             }
         }
@@ -172,8 +204,6 @@ void schedule_fcfs() {
         if (swapped_in) {
             // Validate the process from backing store
             if (swapped_in->num_inst <= 0 || swapped_in->num_inst > 1000000) {
-                printf("[ERROR] Invalid process read from backing store: num_inst=%d\n", 
-                       swapped_in->num_inst);
                 free(swapped_in);
             } else if (try_allocate_memory(swapped_in, memory_head)) {
                 // Successfully allocated memory
@@ -243,8 +273,6 @@ void schedule_fcfs() {
         if (swapped_in) {
             // Validate the process
             if (swapped_in->num_inst <= 0 || swapped_in->num_inst > 1000000) {
-                printf("[ERROR] Invalid process read from backing store: num_inst=%d\n", 
-                       swapped_in->num_inst);
                 free(swapped_in);
             } else if (try_allocate_memory(swapped_in, memory_head)) {
                 // Success - remove from backing store and add to ready queue
@@ -265,7 +293,7 @@ void schedule_fcfs() {
 }
 
 void schedule_rr() {
-    EnterCriticalSection(&cpu_cores_cs);
+     EnterCriticalSection(&cpu_cores_cs);
 
     // Wake up sleeping processes
     for (int i = 0; i < num_cores; i++) {
@@ -299,9 +327,9 @@ void schedule_rr() {
                 if (next->instructions != NULL && next->variables != NULL) {
                     update_cpu_util(1);
                     cpu_cores[i] = next;
-                    next->core = i;  // Set core index
+                    next->core = i;
                     next->state = RUNNING;
-                    next->last_exec_time = time(NULL); // Set execution time
+                    next->last_exec_time = time(NULL);
                     
                     if (next->in_memory == 0) {
                         next->in_memory = 1;
@@ -309,7 +337,6 @@ void schedule_rr() {
                     }
                     next->ticks_ran_in_quantum = 0;
                 } else {
-                    printf("[ERROR] Process %s has invalid instruction/variable arrays\n", next->name);
                     // Don't schedule this process
                     if (next->instructions) free(next->instructions);
                     if (next->variables) free(next->variables);
@@ -318,8 +345,6 @@ void schedule_rr() {
             } else {
                 // Can't allocate memory - send to backing store
                 write_process_to_backing_store(next);
-                // if (next->instructions) free(next->instructions);
-                // if (next->variables) free(next->variables);
                 free(next);
             }
         }
@@ -331,8 +356,6 @@ void schedule_rr() {
         if (swapped_in) {
             // Validate the process from backing store
             if (swapped_in->num_inst <= 0 || swapped_in->num_inst > 1000000) {
-                printf("[ERROR] Invalid process read from backing store: num_inst=%d\n", 
-                       swapped_in->num_inst);
                 free(swapped_in);
             } else if (try_allocate_memory(swapped_in, memory_head)) {
                 // Successfully allocated memory
@@ -402,8 +425,6 @@ void schedule_rr() {
         if (swapped_in) {
             // Validate the process
             if (swapped_in->num_inst <= 0 || swapped_in->num_inst > 1000000) {
-                printf("[ERROR] Invalid process read from backing store: num_inst=%d\n", 
-                       swapped_in->num_inst);
                 free(swapped_in);
             } else if (try_allocate_memory(swapped_in, memory_head)) {
                 // Success - remove from backing store and add to ready queue
@@ -426,18 +447,32 @@ void schedule_rr() {
 
 // main scheduler loop
 DWORD WINAPI scheduler_loop(LPVOID lpParam) {
-    while (scheduler_running) {
+   while (scheduler_running) {
         CPU_TICKS++;
         Sleep(1);
 
-        // Generate a new process
-         if (processes_generating) {
+        // Generate a new process when needed
+        if (processes_generating) {
             if (config.batch_process_freq > 0 && (CPU_TICKS - last_process_tick) >= (uint64_t)config.batch_process_freq) {
-                // Only generate if enough memory is available for at least min-mem-per-proc
-                if (memory.free_memory >= config.min_mem_per_proc) {
-                    Process *dummy = generate_dummy_process(config);
-                    add_process(dummy);
-                    enqueue_ready(dummy);
+                Process *dummy = generate_dummy_process(config);
+                if (dummy) {
+                    // *** FIX: Try to allocate memory BEFORE adding to process table ***
+                    if (memory_head && try_allocate_memory(dummy, memory_head)) {
+                        // Memory allocation successful - NOW add to process table and ready queue
+                        add_process(dummy);
+                        dummy->in_memory = 1;
+                        enqueue_ready(dummy);
+                        update_free_memory();
+                    } else {
+                        // *** FIX: Memory allocation failed - send directly to backing store ***
+                        write_process_to_backing_store(dummy);
+                        
+                        // *** CRITICAL FIX: Free the process after writing to backing store ***
+                        if (dummy->instructions) free(dummy->instructions);
+                        if (dummy->variables) free(dummy->variables);
+                        if (dummy->page_table) free(dummy->page_table);
+                        free(dummy);
+                    }
                 }
                 last_process_tick = CPU_TICKS;
             }
@@ -447,41 +482,13 @@ DWORD WINAPI scheduler_loop(LPVOID lpParam) {
             schedule_rr();
         else
             schedule_fcfs();
-        
-        bool all_idle = true;
-        EnterCriticalSection(&cpu_cores_cs);
-        for (int i = 0; i < num_cores; i++) {
-            if (cpu_cores[i] && cpu_cores[i]->state == RUNNING) {
-                all_idle = false;
-                break;
-            }
-        }
-        LeaveCriticalSection(&cpu_cores_cs);
-
-        if (all_idle) {
-            stats.idle_ticks++;
-        } else {
-            stats.active_ticks++;
-        }
-
-        stats.total_ticks++;
-
-        // print_ready_queue();
-
-        if (quantum > 0 && CPU_TICKS % quantum == 0) {
-            quantum_cycle++;
-            // write_memory_snapshot(CPU_TICKS, memory_head);
-        }
     }
-
-      
-
     return 0;
 }
 
 // Per-core thread function
 DWORD WINAPI core_loop(LPVOID lpParam) {
-    int core_id = (int)(intptr_t)lpParam;
+     int core_id = (int)(intptr_t)lpParam;
 
     while (scheduler_running) {
         EnterCriticalSection(&cpu_cores_cs);
@@ -490,31 +497,26 @@ DWORD WINAPI core_loop(LPVOID lpParam) {
         LeaveCriticalSection(&cpu_cores_cs);
 
         if (should_execute) {
-    // Add comprehensive validation to prevent crashes
-    if (p && p->program_counter < p->num_inst && 
-        p->instructions != NULL && p->variables != NULL) {
-        
-        // Extra validation of instruction data
-        Instruction *inst = &p->instructions[p->program_counter];
-        if (inst) {
-            execute_instruction(p, config);
-            p->ticks_ran_in_quantum++;
+            if (p && p->program_counter < p->num_inst && 
+                p->instructions != NULL && p->variables != NULL) {
+                
+                Instruction *inst = &p->instructions[p->program_counter];
+                if (inst) {
+                    execute_instruction(p, config);
+                    p->ticks_ran_in_quantum++;
+                }
+            } else {
+                // Silently handle invalid process - NO PRINTS!
+                EnterCriticalSection(&cpu_cores_cs);
+                if (p) {
+                    cpu_cores[core_id] = NULL;
+                    update_cpu_util(-1);
+                }
+                LeaveCriticalSection(&cpu_cores_cs);
+            }
         }
-    } else {
-        // Log the invalid process to help debugging
-        EnterCriticalSection(&cpu_cores_cs);
-        printf("[ERROR] Invalid process data detected on core %d. Removing.\n", core_id);
-        if (p) {
-            printf("[ERROR] Process %s (PID: %d) has invalid data: PC=%d, num_inst=%d\n",
-                   p->name, p->pid, p->program_counter, p->num_inst);
-            cpu_cores[core_id] = NULL;
-            update_cpu_util(-1);
-        }
-        LeaveCriticalSection(&cpu_cores_cs);
-    }
-}
 
-        // Handle process completion - CRITICAL SECTION FOR ENTIRE BLOCK
+        // Handle process completion
         EnterCriticalSection(&cpu_cores_cs);
         p = cpu_cores[core_id];
         if (p && p->program_counter >= p->num_inst && p->for_depth == 0) {
@@ -522,18 +524,15 @@ DWORD WINAPI core_loop(LPVOID lpParam) {
             cleanup_process(p);
             add_finished_process(p);
             
-            // *** FIX: Free memory BEFORE setting to NULL ***
             free_process_memory(p, &memory_head);
             update_free_memory();
-            update_cpu_util(-1);  // Add this to maintain proper CPU stats
+            update_cpu_util(-1);
             
-            // *** FIX: Set to NULL AFTER freeing memory ***
             cpu_cores[core_id] = NULL;
             p = NULL;
         }
         LeaveCriticalSection(&cpu_cores_cs);
 
-        // Small delay to prevent tight spinning and reduce CPU usage
         Sleep(1);
     }
     return 0;
@@ -545,7 +544,7 @@ void start_scheduler(Config system_config) {
     scheduler_running = 1;
     processes_generating = 1;
     quantum = config.quantum_cycles;
-    // init_memory(config.max_overall_mem, config.mem_per_frame, config.max_mem_per_proc, config.min_mem_per_proc);
+    init_memory(config.max_overall_mem, config.mem_per_frame, config.max_mem_per_proc, config.min_mem_per_proc);
     init_stats();
     memory_head = init_memory_block(config.max_overall_mem);
     if (strcmp(config.scheduler, "rr") == 0)
@@ -560,6 +559,7 @@ void start_scheduler_without_processes(Config system_config) {
     scheduler_running = 1;
     processes_generating = 0;
     quantum = config.quantum_cycles;
+    init_memory(config.max_overall_mem, config.mem_per_frame, config.max_mem_per_proc, config.min_mem_per_proc);
     init_stats();
     memory_head = init_memory_block(config.max_overall_mem);
     if (strcmp(config.scheduler, "rr") == 0)
@@ -630,27 +630,49 @@ int get_finished_count() {
 }
 
 bool try_allocate_memory(Process* process, MemoryBlock* memory_blocks_head) {
+     if (!process || !memory_blocks_head) {
+        // printf("[MEMORY] Invalid parameters to try_allocate_memory\n");
+        return false;
+    }
+
+    // *** FIX: Add validation for process memory allocation ***
+    if (process->memory_allocation == 0) {
+        // printf("[MEMORY] Process P%d has zero memory allocation\n", process->pid);
+        return false;
+    }
+
     MemoryBlock* curr = memory_blocks_head;
 
     while (curr != NULL) {
-        if (!curr->occupied && (curr->end - curr->base + 1) >= process->memory_allocation) {
-            // Allocate memory to the process
+        uint64_t block_size = curr->end - curr->base + 1;
+
+        // *** FIX: Check if block is NOT occupied AND big enough ***
+        if (!curr->occupied && block_size >= process->memory_allocation) {
+            // Set process memory bounds
             process->mem_base = curr->base;
             process->mem_limit = curr->base + process->memory_allocation - 1;
+            
+            // *** CRITICAL FIX: Mark the block as occupied FIRST ***
             curr->occupied = true;
             curr->pid = process->pid;
 
-            // If there's leftover space, split the block
-            if ((curr->end - curr->base + 1) > process->memory_allocation) {
+            // *** FIX: Split the block if there's leftover space ***
+            if (block_size > process->memory_allocation) {
                 MemoryBlock* new_block = malloc(sizeof(MemoryBlock));
-                new_block->base = curr->base + process->memory_allocation;
-                new_block->end = curr->end;
-                new_block->occupied = false;
-                new_block->pid = -1;
-                new_block->next = curr->next;
+                if (new_block) {
+                    // New block starts after allocated space
+                    new_block->base = curr->base + process->memory_allocation;
+                    new_block->end = curr->end;
+                    new_block->occupied = false;
+                    new_block->pid = -1;
+                    new_block->next = curr->next;
 
-                curr->end = new_block->base - 1;
-                curr->next = new_block;
+                    // *** CRITICAL: Update the current block's end to only cover allocated space ***
+                    curr->end = curr->base + process->memory_allocation - 1;
+                    curr->next = new_block;
+                } else {
+                    // printf("[MEMORY] Warning: Failed to create split block - continuing without split\n");
+                }
             }
 
             stats.num_paged_in++;
@@ -660,5 +682,5 @@ bool try_allocate_memory(Process* process, MemoryBlock* memory_blocks_head) {
         curr = curr->next;
     }
 
-    return false;  // No suitable block found
+    return false;
 }

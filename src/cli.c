@@ -55,6 +55,7 @@ void runCLI() {
         // initialize
         else if (strcmp(command, "initialize") == 0) {
             initialize();
+            init_backing_store();
         }
         // not initialized
         else if (!initialized) {
