@@ -44,10 +44,10 @@ int load_config(Config *config) {
         // quantum cycles
         } else if (strcmp(key, "quantum-cycles") == 0) {
             unsigned int val = (unsigned int)strtoul(value, NULL, 10);
-            if (val >= 1)
+            if (val >= 0)
                 config->quantum_cycles = val;
             else
-                printColor(yellow, "Warning: quantum-cycles is invalid (must be ≥ 1)\n");
+                printColor(yellow, "Warning: quantum-cycles is invalid (must be ≥ 0)\n");
 
         // batch process freq
         } else if (strcmp(key, "batch-process-freq") == 0) {

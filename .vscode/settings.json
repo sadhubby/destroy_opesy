@@ -7,6 +7,7 @@
         "initializer_list": "c",
         "type_traits": "c",
         "xutility": "c",
-        "memory.h": "c"
+        "memory.h": "c",
+        "backing_store.h": "c"
     }
 }

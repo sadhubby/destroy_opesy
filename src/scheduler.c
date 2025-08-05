@@ -552,6 +552,20 @@ void start_scheduler(Config system_config) {
     start_core_threads();
 }
 
+void start_scheduler_without_processes(Config system_config) {
+    config = system_config;
+    scheduler_running = 1;
+    processes_generating = 0;
+    quantum = config.quantum_cycles;
+    init_stats();
+    memory_head = init_memory_block(config.max_overall_mem);
+    if (strcmp(config.scheduler, "rr") == 0)
+        schedule_type = 1;
+
+    scheduler_thread = CreateThread(NULL, 0, scheduler_loop, NULL, 0, NULL);
+    start_core_threads();
+}
+
 void stop_scheduler() {
     processes_generating = 0;
 }

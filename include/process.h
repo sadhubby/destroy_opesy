@@ -128,6 +128,6 @@ extern uint32_t num_processes;
 extern uint32_t process_table_size;
 
 Process *generate_dummy_process(Config config);
-void print_process_info(Process *p);
+extern void print_process_info(Process *p);
 
 #endif

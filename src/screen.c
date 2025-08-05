@@ -2,8 +2,10 @@
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
+#include <windows.h>
 #include "screen.h"
 #include "scheduler.h"
+#include "config.h"
 
 static int process_count = 0;
 
@@ -45,7 +47,7 @@ void screen_process_smi(Process *p) {
 }
 
 // screen -s
-void screen_start(const char *name, int memory_size) {
+void screen_start(const char *name, int memory_size, Config config) {
 
     if (!is_valid_memory_size(memory_size)) {
         printColor(yellow, "Invalid memory size. Must be a power of 2 between 64 and 65536.\n");
@@ -102,21 +104,67 @@ void screen_start(const char *name, int memory_size) {
 
     // Add some PRINT instructions in the mix
     for (int i = 0; i < p->num_inst; i++) {
-        if (rand() % 5 == 0) {  // 20% chance of PRINT instruction
-            p->instructions[i].type = PRINT;
-            snprintf(p->instructions[i].arg1, sizeof(p->instructions[i].arg1),
-                    "Hello from instruction %d", i);
+        int t = rand() % 6; // 0=DECLARE, 1=ADD, 2=SUBTRACT, 3=PRINT, 4=SLEEP, 5=FOR
+        char buf[64];
+        
+        // *** FIX: Ensure we don't access invalid indices ***
+        int v2_idx = (i > 0) ? rand() % i : 0;
+        int v3_is_var = rand() % 2;
+        int v3_idx = (i > 0) ? rand() % i : 0;
+        int v3_val = rand() % 100;
+        
+        char v3_buf[16];
+        if (v3_is_var && i > 0) {
+            snprintf(v3_buf, sizeof(v3_buf), "v%d", v3_idx);
+        } else {
+            snprintf(v3_buf, sizeof(v3_buf), "%d", v3_val);
+        }
+
+        // *** FIX: Initialize instruction struct to zero ***
+        memset(&p->instructions[i], 0, sizeof(Instruction));
+
+        switch (t) {
+            case 0: // DECLARE
+                snprintf(buf, sizeof(buf), "v%d,%d", i, rand() % 100);
+                p->instructions[i] = parse_declare(buf);
+                break;
+            case 1: // ADD
+                snprintf(buf, sizeof(buf), "v%d,v%d,%s", i, v2_idx, v3_buf);
+                p->instructions[i] = parse_add_sub(buf, 1);
+                break;
+            case 2: // SUBTRACT
+                snprintf(buf, sizeof(buf), "v%d,v%d,%s", i, v2_idx, v3_buf);
+                p->instructions[i] = parse_add_sub(buf, 0);
+                break;
+            case 3: // PRINT
+                snprintf(buf, sizeof(buf), "+v%d", (i > 0) ? rand() % i : 0);
+                p->instructions[i] = parse_print(buf);
+                break;
+            case 4: // SLEEP
+                snprintf(buf, sizeof(buf), "%d", 1 + rand() % 10);
+                p->instructions[i] = parse_sleep(buf);
+                break;
+            case 5: // FOR
+                snprintf(buf, sizeof(buf), "[v%d,v%d];%d", i, v2_idx, 1 + rand() % 5);
+                p->instructions[i] = parse_for(buf);
         }
     }
 
-    add_process(p);
+    // Initialize process memory
+    p->memory_allocation = memory_size;
+    p->mem_base = 0;  // Base address for this process
+    p->mem_limit = memory_size;  // Limit is the size of allocated memory
 
-    // Clear console
-    #ifdef _WIN32
-        system("cls");
-    #else
-        system("clear");
-    #endif
+    if (!scheduler_running) {
+        init_ready_queue();
+        init_cpu_cores(config.num_cpu);
+        start_scheduler_without_processes(config);
+    }
+    // // Add to process table and start scheduling
+    add_process(p);
+    // EnterCriticalSection(&ready_queue_cs);
+    enqueue_ready(p);  // Add to scheduler's ready queue
+    // LeaveCriticalSection(&ready_queue_cs);
 
     printf("Attached to new screen: %s (PID: %d)\n", p->name, p->pid);
     printf("Type 'exit' to return to main menu.\n");
