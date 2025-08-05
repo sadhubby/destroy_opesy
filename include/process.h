@@ -53,7 +53,8 @@ typedef struct Instruction {
 // for logs in screen
 typedef struct {
     char message[50];
-    int tick;
+    time_t last_exec_time;
+    int core;
 } Log;
 
 // contents of a for loop
@@ -106,6 +107,8 @@ typedef struct{
 
     PageTableEntry *page_table;
     int num_pages;
+
+    int core;
     
 } Process;
 
