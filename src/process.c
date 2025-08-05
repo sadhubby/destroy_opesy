@@ -154,6 +154,7 @@ void execute_instruction(Process *p, Config config) {
             // sleep for x ticks
             p->state = SLEEPING;
             p->sleep_until_tick = CPU_TICKS + inst->value;
+            break;
         }
 <<<<<<< HEAD
          // read
@@ -190,6 +191,15 @@ void execute_instruction(Process *p, Config config) {
             break;
         }
 >>>>>>> 47417ad (Change READ to not be a randomly generated instruction)
+
+        // write to memory
+        case WRITE: {
+            // Get the memory address from arg1 (could be variable or literal)
+            uint16_t addr = resolve_value(p, inst->arg1, 0);
+            // Write value directly to memory at addr
+            write_to_memory(p, addr, inst->value);
+            break;
+        }
 
     }
 

@@ -19,6 +19,17 @@ MemoryBlock* memory_head;
 // frame table
 #define MAX_FRAMES 1024
 
+// Write a uint16 value to memory for a given process
+void write_to_memory(Process *p, uint16_t addr, uint16_t value) {
+    // Check if address is valid for this process
+    if (!p->in_memory || addr >= p->memory_allocation) {
+        return;  // Invalid memory access, ignore write
+    }
+
+    // Write value to memory space
+    memory_space[addr] = value;
+}
+
 // Read a uint16 value from memory for a given process
 uint16_t read_from_memory(Process *p, uint16_t addr) {
     // Check if address is valid for this process
