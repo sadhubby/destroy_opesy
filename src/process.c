@@ -181,27 +181,52 @@ void execute_instruction(Process *p, Config config) {
             // sleep for x ticks
             p->state = SLEEPING;
             p->sleep_until_tick = CPU_TICKS + inst->value;
+            break;
         }
-        // read
-        // case READ: {
-        //     uint32_t address = 0;
-        //     sscanf(inst->arg2, "%x", &address);
-        //     int success = 0;
-        //     uint16_t value = memory_read(address, p, &success);
-        //     if (success) {
-        //         Variable *v = get_variable(p, inst->arg1);
-        //         if (v) v->value = value;
-        //     }
-        //     break;
-        // }
-        // // writee
-        // case WRITE: {
-        //     uint32_t address = 0;
-        //     sscanf(inst->arg1, "%x", &address);
-        //     uint16_t value = CLAMP_UINT16(inst->value);
-        //     memory_write(address, value, p);
-        //     break;
-        // }
+<<<<<<< HEAD
+         // read
+         case READ: {
+             uint32_t address = 0;
+             sscanf(inst->arg2, "%x", &address);
+             int success = 0;
+             uint16_t value = memory_read(address, p, &success);
+             if (success) {
+                 Variable *v = get_variable(p, inst->arg1);
+                 if (v) v->value = value;
+             }
+             break;
+         }
+         // write
+         case WRITE: {
+             uint32_t address = 0;
+             sscanf(inst->arg1, "%x", &address);
+             uint16_t value = CLAMP_UINT16(inst->value);
+             memory_write(address, value, p);
+             break;
+         }
+=======
+
+        // read from memory
+        case READ: {
+            Variable *dest = get_variable(p, inst->arg1);
+            if (dest) {
+                // Get the memory address from arg2 (could be variable or literal)
+                uint16_t addr = resolve_value(p, inst->arg2, 0);
+                // Read value from memory at addr (assuming 0 if not initialized)
+                dest->value = read_from_memory(p, addr);
+            }
+            break;
+        }
+>>>>>>> 47417ad (Change READ to not be a randomly generated instruction)
+
+        // write to memory
+        case WRITE: {
+            // Get the memory address from arg1 (could be variable or literal)
+            uint16_t addr = resolve_value(p, inst->arg1, 0);
+            // Write value directly to memory at addr
+            write_to_memory(p, addr, inst->value);
+            break;
+        }
 
     }
 
@@ -376,17 +401,7 @@ Instruction parse_for(const char *args) {
 
     return inst;
 }
-// read
-Instruction parse_read(const char *args) {
-    Instruction inst = {0};
-    inst.type = READ;
-    char var[50], addr[50];
-    sscanf(args, "%49[^,],%49s", var, addr);
-    trim(var); trim(addr);
-    strcpy(inst.arg1, var);
-    strcpy(inst.arg2, addr);
-    return inst;
-}
+
 // write
 Instruction parse_write(const char *args) {
     Instruction inst = {0};
@@ -397,6 +412,19 @@ Instruction parse_write(const char *args) {
     trim(addr);
     strcpy(inst.arg1, addr);
     inst.value = value;
+    return inst;
+}
+
+// READ(var, addr)
+Instruction parse_read(const char *args) {
+    Instruction inst = {0};
+    inst.type = READ;
+    char var[50], addr[50];
+    sscanf(args, "%49[^,],%49[^,]", var, addr);
+    trim(var);
+    trim(addr);
+    strcpy(inst.arg1, var);  // Variable to store into
+    strcpy(inst.arg2, addr); // Memory address to read from
     return inst;
 }
 
@@ -424,8 +452,7 @@ int parse_instruction_list(const char *instrs, Instruction *out, int max_count) 
                 out[count++] = parse_sleep(args);
             } else if (strcmp(cmd, "FOR") == 0) {
                 out[count++] = parse_for(args);
-            }
-            else if (strcmp(cmd, "READ") == 0) {
+            }else if (strcmp(cmd, "READ") == 0) {
                 out[count++] = parse_read(args);
             } else if (strcmp(cmd, "WRITE") == 0) {
                 out[count++] = parse_write(args);

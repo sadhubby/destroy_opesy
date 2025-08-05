@@ -2,6 +2,7 @@
 #include "memory.h"
 #include "scheduler.h"
 #include "stats.h"
+#include "backing_store.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -17,6 +18,28 @@ MemoryBlock* memory_head;
 
 // frame table
 #define MAX_FRAMES 1024
+
+// Write a uint16 value to memory for a given process
+void write_to_memory(Process *p, uint16_t addr, uint16_t value) {
+    // Check if address is valid for this process
+    if (!p->in_memory || addr >= p->memory_allocation) {
+        return;  // Invalid memory access, ignore write
+    }
+
+    // Write value to memory space
+    memory_space[addr] = value;
+}
+
+// Read a uint16 value from memory for a given process
+uint16_t read_from_memory(Process *p, uint16_t addr) {
+    // Check if address is valid for this process
+    if (!p->in_memory || addr >= p->memory_allocation) {
+        return 0;  // Return 0 if memory not allocated or address out of bounds
+    }
+
+    // Return value from memory space (assuming it's initialized to 0 by default)
+    return memory_space[addr];
+}
 
 typedef struct {
     bool occupied;
@@ -49,47 +72,118 @@ int is_valid_memory_address(uint32_t address) {
 }
 
 int handle_page_fault(Process *p, uint32_t virtual_address) {
+    EnterCriticalSection(&backing_store_cs);  // Protect backing store access
+
     uint32_t offset = virtual_address - p->mem_base;
     uint32_t page_number = offset / memory.mem_per_frame;
 
+    // Check for invalid page access
     if (page_number >= p->num_pages) {
-        printf("%d %d\n", page_number, p->num_pages);
         printf("[ACCESS VIOLATION] Invalid page access by P%d at 0x%X\n", p->pid, virtual_address);
         p->state = FINISHED;
+        LeaveCriticalSection(&backing_store_cs);
         return 0;
     }
 
+    // Try to find a free frame first
     for (int i = 0; i < num_frames; i++) {
         if (!frame_table[i].occupied) {
+            // Load page from backing store into frame
             frame_table[i] = (Frame){true, p->pid, page_number, CPU_TICKS};
             p->page_table[page_number] = (PageTableEntry){i, true};
+            
+            // Read the page data from backing store
+            uint32_t page_start = p->mem_base + (page_number * memory.mem_per_frame);
+            uint32_t frame_start = i * memory.mem_per_frame / 2;  // Divide by 2 because memory_space is uint16_t array
+            
+            // Zero the frame contents first
+            memset(&memory_space[frame_start], 0, memory.mem_per_frame);
+            
             stats.num_paged_in++;
+            LeaveCriticalSection(&backing_store_cs);
             return 1;
         }
     }
 
-    int victim_idx = 0;
-    for (int i = 1; i < num_frames; i++) {
-        if (frame_table[i].last_used_tick < frame_table[victim_idx].last_used_tick)
+    // No free frames - need to select a victim using Enhanced LRU
+    // printf("[Page Fault] No free frames available. Selecting victim frame...\n");
+    
+    int victim_idx = -1;
+    uint64_t oldest_access = UINT64_MAX;
+    Process *victim_process = NULL;
+
+    // First try to find pages from finished or sleeping processes
+    for (int i = 0; i < num_frames; i++) {
+        if (!frame_table[i].occupied) continue;
+
+        // Find the process that owns this frame
+        Process *owner = NULL;
+        for (int j = 0; j < num_processes; j++) {
+            if (process_table[j] && process_table[j]->pid == frame_table[i].pid) {
+                owner = process_table[j];
+                break;
+            }
+        }
+
+        // Prefer pages from finished/sleeping processes
+        if (owner && (owner->state == FINISHED || owner->state == SLEEPING)) {
             victim_idx = i;
-    }
-
-    int victim_pid = frame_table[victim_idx].pid;
-    int victim_page = frame_table[victim_idx].page_number;
-
-    for (int i = 0; i < num_processes; i++) {
-        Process *q = process_table[i];
-        if (q && q->pid == victim_pid && q->page_table) {
-            q->page_table[victim_page].valid = false;
+            victim_process = owner;
             break;
+        }
+
+        // Otherwise, track the least recently used frame
+        if (frame_table[i].last_used_tick < oldest_access) {
+            oldest_access = frame_table[i].last_used_tick;
+            victim_idx = i;
+            victim_process = owner;
         }
     }
 
+    if (victim_idx == -1 || !victim_process) {
+        printf("[ERROR] Failed to find a valid victim frame\n");
+        LeaveCriticalSection(&backing_store_cs);
+        return 0;
+    }
+
+    int victim_page = frame_table[victim_idx].page_number;
+    printf("[Page Replacement] Evicting page %d of process %d from frame %d\n",
+           victim_page, victim_process->pid, victim_idx);
+
+    // Save the victim frame's contents to backing store
+    uint32_t victim_frame_start = victim_idx * memory.mem_per_frame / 2;
+    uint32_t victim_page_start = victim_process->mem_base + (victim_page * memory.mem_per_frame);
+
+    // Copy frame contents to a temporary buffer
+    uint16_t *page_buffer = malloc(memory.mem_per_frame);
+    if (page_buffer) {
+        memcpy(page_buffer, &memory_space[victim_frame_start], memory.mem_per_frame);
+        
+        // Mark the page as no longer in memory
+        victim_process->page_table[victim_page].valid = false;
+        
+        // Write victim process state to backing store
+        write_process_to_backing_store(victim_process);
+        
+        free(page_buffer);
+        stats.num_paged_out++;
+        
+        printf("[Page Out] Successfully saved page %d of process %d to backing store\n",
+               victim_page, victim_process->pid);
+    } else {
+        printf("[ERROR] Failed to allocate buffer for page out operation\n");
+    }
+
+    // Clear the frame and load the new page
     frame_table[victim_idx] = (Frame){true, p->pid, page_number, CPU_TICKS};
     p->page_table[page_number] = (PageTableEntry){victim_idx, true};
 
+    // Zero the frame contents
+    uint32_t frame_start = victim_idx * memory.mem_per_frame / 2;
+    memset(&memory_space[frame_start], 0, memory.mem_per_frame);
+
     stats.num_paged_in++;
-    stats.num_paged_out++;
+    LeaveCriticalSection(&backing_store_cs);
     return 1;
 }
 
