@@ -10,8 +10,8 @@
 // Thread-safe PID counter
 volatile long next_pid = 1;
 
-// retain in uint16 bounds
-#define CLAMP_UINT16(x) ((x) > 65535 ? 65535 : (x))
+// retain in uint16 bounds (0 to 65535)
+#define CLAMP_UINT16(x) ((x) > 65535 ? 65535 : ((x) < 0 ? 0 : (x)))
 
 // get variable given a process and a variable name
 Variable *get_variable(Process *p, const char *name) {
@@ -339,8 +339,10 @@ Instruction parse_declare(const char *args) {
     Instruction inst = {0};
     inst.type = DECLARE;
     char var[50];
-    int value;
-    sscanf(args, "%49[^,],%d", var, &value);
+    uint16_t value;
+    int temp;
+    sscanf(args, "%49[^,],%d", var, &temp);
+    value = (uint16_t)CLAMP_UINT16(temp);
     trim(var);
     strcpy(inst.arg1, var);
     inst.value = value;
@@ -352,7 +354,8 @@ Instruction parse_add_sub(const char *args, int is_add) {
     Instruction inst = {0};
     inst.type = is_add ? ADD : SUBTRACT;
     char var1[50], var2[50], var3[50];
-    int v2, v3;
+    int temp2, temp3;
+    uint16_t v2, v3;
     sscanf(args, "%49[^,],%49[^,],%49[^,]", var1, var2, var3);
     trim(var1); trim(var2); trim(var3);
     strncpy(inst.arg1, var1, sizeof(inst.arg1) - 1);
@@ -365,7 +368,8 @@ Instruction parse_add_sub(const char *args, int is_add) {
     }
 
     // Parse as raw ints first then variables
-    if (sscanf(var2, "%d", &v2) == 1) {
+    if (sscanf(var2, "%d", &temp2) == 1) {
+        v2 = (uint16_t)CLAMP_UINT16(temp2);
         inst.arg2[0] = '\0';
         inst.value = v2;
     } else {
@@ -373,7 +377,8 @@ Instruction parse_add_sub(const char *args, int is_add) {
         inst.arg2[sizeof(inst.arg2) - 1] = '\0';
     }
     
-    if (sscanf(var3, "%d", &v3) == 1) {
+    if (sscanf(var3, "%d", &temp3) == 1) {
+        v3 = (uint16_t)CLAMP_UINT16(temp3);
         inst.arg3[0] = '\0';
         inst.value = v3;
     } else {
@@ -481,8 +486,10 @@ Instruction parse_write(const char *args) {
     Instruction inst = {0};
     inst.type = WRITE;
     char addr[50];
-    int value;
-    sscanf(args, "%49[^,],%d", addr, &value);
+    int temp_value;
+    uint16_t value;
+    sscanf(args, "%49[^,],%d", addr, &temp_value);
+    value = (uint16_t)CLAMP_UINT16(temp_value);
     trim(addr);
     strcpy(inst.arg1, addr);
     inst.value = value;
