@@ -6,6 +6,7 @@
 #include "screen.h"
 #include "scheduler.h"
 #include "config.h"
+#include "process.h"
 
 static int process_count = 0;
 
@@ -74,15 +75,30 @@ void screen_start(const char *name, int memory_size, Config config) {
     // Initialize process with zeroes
     memset(p, 0, sizeof(Process));
     
-    // Set basic process info
+    // Set basic process info with proper string handling
     strncpy(p->name, name, sizeof(p->name) - 1);
     p->name[sizeof(p->name) - 1] = '\0';
     p->pid = process_count + 1;
     p->program_counter = 0;
-    p->num_inst = rand() % 1000 + 200; // Randomized instruction length, or from config
+    p->num_inst = config.min_ins + rand() % (config.max_ins - config.min_ins + 1); // Randomized instruction length, or from config
     p->last_exec_time = time(NULL);
     p->state = READY;
     p->is_in_screen = true;
+    p->for_depth = 0;
+    p->ticks_ran_in_quantum = 0;
+
+    // Initialize variables array with proper capacity
+    p->variables_capacity = p->num_inst;  // Set initial capacity
+    p->variables = malloc(sizeof(Variable) * p->variables_capacity);
+    if (!p->variables) {
+        printColor(yellow, "Failed to allocate memory for process variables.\n");
+        free(p);
+        return;
+    }
+    memset(p->variables, 0, sizeof(Variable) * p->variables_capacity);
+    p->num_var = 0;  // Start with no variables
+    p->variables_capacity = p->num_inst;  // Set capacity
+    p->num_var = 0;  // Initialize with no variables
 
     // Initialize logs array
     p->logs = malloc(sizeof(Log) * 100);  // Support up to 100 logs
@@ -102,23 +118,28 @@ void screen_start(const char *name, int memory_size, Config config) {
         return;
     }
 
-    // Add some PRINT instructions in the mix
-    for (int i = 0; i < p->num_inst; i++) {
-        int t = rand() % 6; // 0=DECLARE, 1=ADD, 2=SUBTRACT, 3=PRINT, 4=SLEEP, 5=FOR
+    // Zero out all instructions first
+    memset(p->instructions, 0, sizeof(Instruction) * p->num_inst);
+
+    // First 5 instructions are always DECLARE to ensure we have variables
+    for (int i = 0; i < 5 && i < p->num_inst; i++) {
         char buf[64];
+        snprintf(buf, sizeof(buf), "v%d,%d", i, rand() % 100);
+        p->instructions[i] = parse_declare(buf);
+    }
+
+    // Generate remaining instructions
+    for (int i = 5; i < p->num_inst; i++) {
+        memset(&p->instructions[i], 0, sizeof(Instruction));  // Zero each instruction before setting
+        int t = rand() % 5; // 0=DECLARE, 1=ADD, 2=SUBTRACT, 3=PRINT, 4=SLEEP (removed FOR)
+        char buf[64] = {0};  // Initialize buffer to zeros
         
-        // *** FIX: Ensure we don't access invalid indices ***
-        int v2_idx = (i > 0) ? rand() % i : 0;
-        int v3_is_var = rand() % 2;
-        int v3_idx = (i > 0) ? rand() % i : 0;
+        // Only reference variables we know exist (0-4)
+        int v2_idx = rand() % 5;  // Always use one of our first 5 declared variables
         int v3_val = rand() % 100;
         
         char v3_buf[16];
-        if (v3_is_var && i > 0) {
-            snprintf(v3_buf, sizeof(v3_buf), "v%d", v3_idx);
-        } else {
-            snprintf(v3_buf, sizeof(v3_buf), "%d", v3_val);
-        }
+        snprintf(v3_buf, sizeof(v3_buf), "%d", v3_val);
 
         // *** FIX: Initialize instruction struct to zero ***
         memset(&p->instructions[i], 0, sizeof(Instruction));
@@ -128,25 +149,31 @@ void screen_start(const char *name, int memory_size, Config config) {
                 snprintf(buf, sizeof(buf), "v%d,%d", i, rand() % 100);
                 p->instructions[i] = parse_declare(buf);
                 break;
+
             case 1: // ADD
-                snprintf(buf, sizeof(buf), "v%d,v%d,%s", i, v2_idx, v3_buf);
+                snprintf(buf, sizeof(buf), "v%d,v%d,%d", i, v2_idx, v3_val);
                 p->instructions[i] = parse_add_sub(buf, 1);
                 break;
+
             case 2: // SUBTRACT
-                snprintf(buf, sizeof(buf), "v%d,v%d,%s", i, v2_idx, v3_buf);
+                snprintf(buf, sizeof(buf), "v%d,v%d,%d", i, v2_idx, v3_val);
                 p->instructions[i] = parse_add_sub(buf, 0);
                 break;
+
             case 3: // PRINT
-                snprintf(buf, sizeof(buf), "+v%d", (i > 0) ? rand() % i : 0);
+                snprintf(buf, sizeof(buf), "+v%d", v2_idx);  // Print one of our known good variables
                 p->instructions[i] = parse_print(buf);
                 break;
+
             case 4: // SLEEP
-                snprintf(buf, sizeof(buf), "%d", 1 + rand() % 10);
+                snprintf(buf, sizeof(buf), "%d", 1 + rand() % 5);  // Shorter sleep times
                 p->instructions[i] = parse_sleep(buf);
                 break;
-            case 5: // FOR
-                snprintf(buf, sizeof(buf), "[v%d,v%d];%d", i, v2_idx, 1 + rand() % 5);
-                p->instructions[i] = parse_for(buf);
+
+            default: // Safety - if we get an invalid type, just DECLARE
+                snprintf(buf, sizeof(buf), "v%d,%d", i, rand() % 100);
+                p->instructions[i] = parse_declare(buf);
+                break;
         }
     }
 

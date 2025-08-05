@@ -12,6 +12,12 @@
 
 // get variable given a process and a variable name
 Variable *get_variable(Process *p, const char *name) {
+    if (!p || !name || !p->variables) {
+        printf("[ERROR] Invalid arguments to get_variable: p=%p, name=%p, variables=%p\n",
+               (void*)p, (void*)name, p ? (void*)p->variables : NULL);
+        return NULL;
+    }
+
     char trimmed_name[MAX_PROCESS_NAME];
     strncpy(trimmed_name, name, MAX_PROCESS_NAME - 1);
     trimmed_name[MAX_PROCESS_NAME - 1] = '\0';
@@ -34,16 +40,25 @@ Variable *get_variable(Process *p, const char *name) {
         }
     }
 
-    // Grow variable array if needed
+    // Grow variable array if needed, but with safety checks
     if (p->num_var >= p->variables_capacity) {
-        int new_cap = p->variables_capacity * 2;
-        Variable *new_vars = realloc(p->variables, new_cap * sizeof(Variable));
-        if (!new_vars) {
-            printf("[ERROR] Failed to realloc variables array for process %d!\n", p->pid);
+        if (p->variables_capacity >= 1000000) {
+            printf("[ERROR] Variable capacity too large for process %d\n", p->pid);
             return NULL;
         }
+        int new_cap = p->variables_capacity * 2;
+        Variable *new_vars = malloc(new_cap * sizeof(Variable));  // Use malloc instead of realloc
+        if (!new_vars) {
+            printf("[ERROR] Failed to allocate new variables array for process %d!\n", p->pid);
+            return NULL;
+        }
+        // Copy old data and free old array
+        memcpy(new_vars, p->variables, p->variables_capacity * sizeof(Variable));
+        memset(new_vars + p->variables_capacity, 0, (new_cap - p->variables_capacity) * sizeof(Variable));
+        free(p->variables);
         p->variables = new_vars;
         p->variables_capacity = new_cap;
+        printf("[DEBUG] Expanded variables array for process %s: new capacity=%d\n", p->name, new_cap);
     }
     strcpy(p->variables[p->num_var].name, trimmed_name);
     p->variables[p->num_var].value = 0;
@@ -58,13 +73,27 @@ uint16_t resolve_value(Process *p, const char *arg, uint16_t fallback) {
 }
 
 void execute_instruction(Process *p, Config config) {
-    Instruction *inst;
-
-    //guard for out of bounds
-    if (p->program_counter >= p->num_inst) {
-        // Already finished, do nothing
+    // Add validation checks
+    if (!p) {
+        printf("[ERROR] Null process pointer in execute_instruction\n");
         return;
     }
+
+    // Validate process structure
+    if (p->program_counter < 0 || !p->instructions || !p->variables) {
+        printf("[ERROR] Invalid process state: PC=%d, instructions=%p, variables=%p\n",
+               p->program_counter, (void*)p->instructions, (void*)p->variables);
+        return;
+    }
+
+    //guard for out of bounds with better logging
+    if (p->program_counter >= p->num_inst) {
+        printf("[DEBUG] Process %s reached end: PC=%d, num_inst=%d\n",
+               p->name, p->program_counter, p->num_inst);
+        return;
+    }
+
+    Instruction *inst = &p->instructions[p->program_counter];
     // if inside a for loop
     if (p->for_depth > 0) {
         ForContext *ctx = &p->for_stack[p->for_depth - 1];
@@ -81,8 +110,6 @@ void execute_instruction(Process *p, Config config) {
             return;
         }
     }
-    else
-    inst = &p->instructions[p->program_counter];
 
     switch (inst->type) {
         // declare

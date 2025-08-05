@@ -149,7 +149,7 @@ void schedule_fcfs() {
                         update_free_memory();
                     }
                 } else {
-                    printf("[ERROR] Process P%s has invalid instruction/variable arrays\n", next->name);
+                    printf("[ERROR] Process %s has invalid instruction/variable arrays\n", next->name);
                     // Don't schedule this process
                     if (next->instructions) free(next->instructions);
                     if (next->variables) free(next->variables);
@@ -307,7 +307,7 @@ void schedule_rr() {
                     }
                     next->ticks_ran_in_quantum = 0;
                 } else {
-                    printf("[ERROR] Process P%s has invalid instruction/variable arrays\n", next->name);
+                    printf("[ERROR] Process %s has invalid instruction/variable arrays\n", next->name);
                     // Don't schedule this process
                     if (next->instructions) free(next->instructions);
                     if (next->variables) free(next->variables);
@@ -466,7 +466,7 @@ DWORD WINAPI scheduler_loop(LPVOID lpParam) {
 
         // print_ready_queue();
 
-        if (CPU_TICKS % quantum == 0) {
+        if (quantum > 0 && CPU_TICKS % quantum == 0) {
             quantum_cycle++;
             // write_memory_snapshot(CPU_TICKS, memory_head);
         }
