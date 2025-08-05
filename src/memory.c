@@ -19,6 +19,17 @@ MemoryBlock* memory_head;
 // frame table
 #define MAX_FRAMES 1024
 
+// Read a uint16 value from memory for a given process
+uint16_t read_from_memory(Process *p, uint16_t addr) {
+    // Check if address is valid for this process
+    if (!p->in_memory || addr >= p->memory_allocation) {
+        return 0;  // Return 0 if memory not allocated or address out of bounds
+    }
+
+    // Return value from memory space (assuming it's initialized to 0 by default)
+    return memory_space[addr];
+}
+
 typedef struct {
     bool occupied;
     int pid;
