@@ -145,13 +145,28 @@ void execute_instruction(Process *p, Config config) {
         }
         // print
         case PRINT: {
-            // Variable *v = get_variable(p, inst->arg1);
-            // if (v) {
-            //     printf("Hello world from %s! Value of %s = %u\n", p->name, v->name, v->value);
-            // } else {
-            //     printf("Hello world from %s!\n", p->name);
-            // }
-            // break;
+            // Clear logs if buffer is full
+            if (p->num_logs >= 100) {
+                memset(p->logs, 0, sizeof(Log) * 100);
+                p->num_logs = 0;
+            }
+
+            Variable *v = get_variable(p, inst->arg1);
+            if (v) {
+                char logMessage[256];
+                snprintf(logMessage, sizeof(logMessage), "Hello world from %s! Value of %s = %u\n", p->name, v->name, v->value);
+                strcpy(p->logs[p->num_logs].message, logMessage);
+            } else {
+                char logMessage[256];
+                snprintf(logMessage, sizeof(logMessage), "Hello world from %s!\n", p->name);
+                strcpy(p->logs[p->num_logs].message, logMessage);
+            }
+
+            p->logs[p->num_logs].last_exec_time = time(NULL);
+            p->logs[p->num_logs].core = p->core;
+            p->num_logs++;
+
+            break;
         }
         
         // for
@@ -487,6 +502,7 @@ Process *generate_dummy_process(Config config) {
     p->program_counter = 0;
     p->num_var = 0;
     p->num_inst = num_inst;
+    p->num_logs = 0;
     p->variables_capacity = 8;
     p->in_memory = 0;
     p->for_depth = 0;  // *** FIX: Initialize for_depth ***
@@ -494,6 +510,12 @@ Process *generate_dummy_process(Config config) {
     p->last_exec_time = 0;  // *** FIX: Initialize to 0, will be set when scheduled ***
     p->num_pages = memory_allocation / config.mem_per_frame;
     p->page_table = (PageTableEntry *)calloc(p->num_pages, sizeof(PageTableEntry));
+
+    p->logs = malloc(sizeof(Log) * 100);  // Support up to 100 logs
+    if (!p->logs) {
+        free(p);
+        return NULL;
+    }
 
     // *** FIX: Safer memory allocation with error checking ***
     p->variables = (Variable *)calloc(p->variables_capacity, sizeof(Variable));

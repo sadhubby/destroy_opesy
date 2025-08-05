@@ -141,6 +141,7 @@ void schedule_fcfs() {
                 if (next->instructions != NULL && next->variables != NULL) {
                     update_cpu_util(1);
                     cpu_cores[i] = next;
+                    next->core = i;  // Set core index
                     next->state = RUNNING;
                     next->last_exec_time = time(NULL); // Set execution time
                     
@@ -298,6 +299,7 @@ void schedule_rr() {
                 if (next->instructions != NULL && next->variables != NULL) {
                     update_cpu_util(1);
                     cpu_cores[i] = next;
+                    next->core = i;  // Set core index
                     next->state = RUNNING;
                     next->last_exec_time = time(NULL); // Set execution time
                     
