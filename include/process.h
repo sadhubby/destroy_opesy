@@ -8,7 +8,7 @@
 
 #define MAX_PROCESS_NAME 50
 #define MAX_LOOP_DEPTH 3
-
+ 
 // track states of the different processes
 typedef enum {
     READY,
