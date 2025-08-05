@@ -1,6 +1,7 @@
 #ifndef BACKING_STORE_H
 #define BACKING_STORE_H
 
+#include <stdio.h>
 #include "process.h"
 #include <windows.h>
 
