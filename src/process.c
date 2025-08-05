@@ -58,6 +58,27 @@ uint16_t resolve_value(Process *p, const char *arg, uint16_t fallback) {
 }
 
 void execute_instruction(Process *p, Config config) {
+    if (!p) {
+        printf("[ERROR] NULL process passed to execute_instruction\n");
+        return;
+    }
+
+    // Validate process state
+    if (!p->instructions || !p->variables || !p->page_table) {
+        printf("[ERROR] Process %d has corrupted state (instructions=%p, variables=%p, page_table=%p)\n",
+               p->pid, (void*)p->instructions, (void*)p->variables, (void*)p->page_table);
+        p->state = FINISHED;
+        return;
+    }
+
+    // Validate memory configuration
+    if (p->num_pages == 0 || p->memory_allocation == 0 || p->memory_allocation > config.max_mem_per_proc) {
+        printf("[ERROR] Process %d has invalid memory configuration: pages=%u, allocation=%u\n",
+               p->pid, p->num_pages, p->memory_allocation);
+        p->state = FINISHED;
+        return;
+    }
+
     Instruction *inst;
 
     //guard for out of bounds
@@ -143,17 +164,154 @@ void execute_instruction(Process *p, Config config) {
             p->sleep_until_tick = CPU_TICKS + inst->value;
         }
         // read
-        // case READ: {
-        //     uint32_t address = 0;
-        //     sscanf(inst->arg2, "%x", &address);
-        //     int success = 0;
-        //     uint16_t value = memory_read(address, p, &success);
-        //     if (success) {
-        //         Variable *v = get_variable(p, inst->arg1);
-        //         if (v) v->value = value;
-        //     }
-        //     break;
-        // }
+        case READ: {
+            int success = 1;  // Track if instruction succeeds
+
+            // Validate and clean variable name
+            char valid_name[50] = {0};
+            if (!inst->arg1[0]) {
+                printf("[DEBUG] Raw arg1 empty in READ for P%d\n", p->pid);
+                p->program_counter++;  // Make sure to increment PC before returning
+                return;   // Exit immediately on empty arg1
+            } 
+            
+            // Only continue if we have a non-empty arg1
+            {
+                // Make a copy for validation
+                strncpy(valid_name, inst->arg1, sizeof(valid_name) - 1);
+                valid_name[sizeof(valid_name) - 1] = '\0';
+                
+                // First pass: count non-whitespace characters
+                int valid_chars = 0;
+                for (const char *p = valid_name; *p; p++) {
+                    if (!isspace((unsigned char)*p)) {
+                        valid_chars++;
+                    }
+                }
+                
+                if (valid_chars == 0) {
+                    printf("[ERROR] Variable name contains only whitespace in READ for P%d\n", p->pid);
+                    success = 0;
+                } else {
+                    // Second pass: remove whitespace
+                    int j = 0;
+                    for (int i = 0; valid_name[i]; i++) {
+                        if (!isspace((unsigned char)valid_name[i])) {
+                            valid_name[j++] = valid_name[i];
+                        }
+                    }
+                    valid_name[j] = '\0';
+                }
+
+                // Validate cleaned variable name
+                if (!valid_name[0]) {
+                    printf("[ERROR] Missing variable name in READ for P%d\n", p->pid);
+                    success = 0;
+                } else {
+                    // Check for valid characters
+                    for (const char *c = valid_name; *c; c++) {
+                        if (!isalnum((unsigned char)*c) && *c != '_') {
+                            printf("[ERROR] Invalid variable name '%s' in READ for P%d\n", 
+                                   valid_name, p->pid);
+                            success = 0;
+                            break;
+                        }
+                    }
+
+                    if (success) {
+                        // Pre-create/validate the variable
+                        Variable *v = get_variable(p, valid_name);
+                        if (!v) {
+                            printf("[ERROR] Failed to get/create variable %s for P%d\n", 
+                                   valid_name, p->pid);
+                            success = 0;
+                        } else {
+                            // Copy cleaned name to instruction
+                            strncpy(inst->arg1, valid_name, sizeof(inst->arg1) - 1);
+                            inst->arg1[sizeof(inst->arg1) - 1] = '\0';
+                        }
+                    }
+                }
+            }
+
+            // Only proceed with address parsing if variable name was valid
+            if (success) {
+                // Validate and parse address
+                if (!inst->arg2[0]) {
+                    printf("[ERROR] Missing address in READ for P%d\n", p->pid);
+                    p->program_counter++;  // Make sure to increment PC before returning
+                    return;   // Exit immediately on empty arg2
+                }
+
+                uint32_t address = 0;
+                const char *addr_str = inst->arg2;
+                
+                // Handle 0x prefix
+                if (strncmp(addr_str, "0x", 2) == 0) {
+                    addr_str += 2;
+                }
+
+                // Parse hex address
+                char *end;
+                address = strtoul(addr_str, &end, 16);
+                if (*end != '\0' || end == addr_str) {
+                    printf("[ERROR] Invalid hex address '%s' in READ for P%d\n", 
+                           inst->arg2, p->pid);
+                    success = 0;
+                } else {
+                    // Validate address alignment
+                    if (address % 2 != 0) {
+                        printf("[ERROR] Unaligned memory access at 0x%X for P%d\n", 
+                               address, p->pid);
+                        success = 0;
+                    }
+                    // Validate address is within process's memory allocation
+                    else if (address >= p->memory_allocation) {
+                        printf("[ERROR] Address 0x%X exceeds process memory allocation %u for P%d\n",
+                               address, p->memory_allocation, p->pid);
+                        success = 0;
+                    }
+                    else {
+                        // Attempt the memory read
+                        int read_success = 0;
+                        int max_attempts = 3;  // Prevent infinite loops
+                        uint16_t value;
+
+                        for (int attempt = 0; attempt < max_attempts; attempt++) {
+                            value = memory_read(address, p, &read_success);
+                            if (read_success) break;
+                            
+                            if (attempt < max_attempts - 1) {
+                                printf("[DEBUG] Memory read attempt %d failed, retrying...\n", attempt + 1);
+                            }
+                        }
+
+                        if (!read_success) {
+                            printf("[ERROR] Memory read failed for P%d at address 0x%X after %d attempts\n", 
+                                   p->pid, address, max_attempts);
+                            success = 0;
+                        } else {
+                            // Store the read value in our validated variable
+                            Variable *v = get_variable(p, inst->arg1);
+                            if (v) {
+                                v->value = value;
+                                printf("[DEBUG] Successfully read value %u from address 0x%X for P%d\n",
+                                       value, address, p->pid);
+                            } else {
+                                printf("[ERROR] Variable became invalid during READ for P%d\n", p->pid);
+                                success = 0;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Always increment PC for READ instructions, whether successful or not
+            p->program_counter++;
+            printf("[DEBUG] P%d PC incremented to %d after READ instruction\n", 
+                   p->pid, p->program_counter);
+            break;
+        }
         // // writee
         // case WRITE: {
         //     uint32_t address = 0;
@@ -165,16 +323,17 @@ void execute_instruction(Process *p, Config config) {
 
     }
 
-    // Record the time of this instruction execution
-    if (p->state != SLEEPING)
-        p->last_exec_time = time(NULL);
+    // Only increment PC if instruction executed successfully
+    // SLEEP doesn't increment since it needs to stay on same instruction
+    // READ increments on its own for error cases
+    if (inst->type != SLEEP && inst->type != READ) {
+        p->program_counter++;
+    }
 
-    // if in for loop, move index in for loop
-    // if (p->for_depth > 0) {
-    //     p->for_stack[p->for_depth - 1].current_index++;
-    // } else {
-    p->program_counter++;
-    // }
+    // Record the time of this instruction execution
+    if (p->state != SLEEPING) {
+        p->last_exec_time = time(NULL);
+    }
 
     return;
 }
@@ -184,15 +343,29 @@ uint32_t num_processes = 0;
 uint32_t process_table_size = 0;
 
 void add_process(Process *p) {
+    if (!p) {
+        printf("[ERROR] Attempted to add NULL process to process table\n");
+        return;
+    }
+
     if (num_processes >= process_table_size) {
-        process_table_size = process_table_size == 0 ? 8 : process_table_size * 2;
-        process_table = realloc(process_table, process_table_size * sizeof(Process *));
+        uint32_t new_size = process_table_size == 0 ? 8 : process_table_size * 2;
+        Process **new_table = realloc(process_table, new_size * sizeof(Process *));
+        if (!new_table) {
+            printf("[ERROR] Failed to resize process table from %u to %u\n", 
+                   process_table_size, new_size);
+            return;
+        }
+        process_table = new_table;
+        process_table_size = new_size;
     }
 
     process_table[num_processes++] = p;
+    printf("[DEBUG] Added P%d to process table (slot %u), pages=%u, allocation=%u\n",
+           p->pid, num_processes-1, p->num_pages, p->memory_allocation);
 }
 
-// trim whitepsace
+// trim whitespace
 void trim(char *str) {
     char *end;
 
@@ -340,11 +513,121 @@ Instruction parse_for(const char *args) {
 Instruction parse_read(const char *args) {
     Instruction inst = {0};
     inst.type = READ;
-    char var[50], addr[50];
-    sscanf(args, "%49[^,],%49s", var, addr);
-    trim(var); trim(addr);
-    strcpy(inst.arg1, var);
-    strcpy(inst.arg2, addr);
+    char var[50] = {0};
+    char addr[50] = {0};
+    char format[50] = {0};
+    
+    // Skip any leading whitespace
+    while (*args && isspace((unsigned char)*args)) args++;
+    
+    // Validate input string isn't empty
+    if (!*args) {
+        printf("[ERROR] Empty READ instruction arguments\n");
+        return inst;
+    }
+    
+    // Parse with exact format requirements and handle escaped characters
+    char *working_copy = strdup(args);
+    if (!working_copy) {
+        printf("[ERROR] Memory allocation failed in parse_read\n");
+        return inst;
+    }
+
+    // Clean up the input string first
+    char *clean = working_copy;
+    char *write = clean;
+    
+    // Skip leading whitespace
+    while (*clean && isspace((unsigned char)*clean)) clean++;
+    
+    // Copy while removing extra whitespace
+    int in_space = 0;
+    while (*clean) {
+        if (isspace((unsigned char)*clean)) {
+            if (!in_space) {
+                *write++ = ' ';
+                in_space = 1;
+            }
+        } else {
+            *write++ = *clean;
+            in_space = 0;
+        }
+        clean++;
+    }
+    *write = '\0';
+    
+    // Remove trailing whitespace
+    while (write > working_copy && isspace((unsigned char)*(write-1))) {
+        *--write = '\0';
+    }
+
+    // Now try to parse the cleaned string
+    char *comma = strchr(working_copy, ',');
+    if (!comma) {
+        printf("[ERROR] Missing comma in READ instruction: %s\n", args);
+        free(working_copy);
+        return inst;
+    }
+
+    // Split at comma
+    *comma = '\0';
+    char *var_part = working_copy;
+    char *addr_part = comma + 1;
+    
+    // Remove whitespace around both parts
+    trim(var_part);
+    trim(addr_part);
+    
+    if (!*var_part || !*addr_part) {
+        printf("[ERROR] Missing variable or address in READ: %s\n", args);
+        free(working_copy);
+        return inst;
+    }
+
+    // Copy to our buffers
+    strncpy(var, var_part, sizeof(var) - 1);
+    strncpy(addr, addr_part, sizeof(addr) - 1);
+    var[sizeof(var) - 1] = '\0';
+    addr[sizeof(addr) - 1] = '\0';
+    
+    free(working_copy);
+
+    // Clean up the strings
+    trim(var); 
+    trim(addr);
+
+    // Validate variable name isn't empty and contains only valid characters
+    if (var[0] == '\0') {
+        printf("[ERROR] Empty variable name in READ instruction\n");
+        return inst;
+    }
+    
+    for (char *p = var; *p; p++) {
+        if (!isalnum((unsigned char)*p) && *p != '_') {
+            printf("[ERROR] Invalid character in variable name: %s\n", var);
+            return inst;
+        }
+    }
+
+    // Validate and normalize address format
+    if (strncmp(addr, "0x", 2) != 0) {
+        // Try to add 0x prefix if missing
+        memmove(addr + 2, addr, strlen(addr) + 1);
+        addr[0] = '0';
+        addr[1] = 'x';
+    }
+
+    // Try parsing the address to validate it
+    unsigned int test_addr;
+    if (sscanf(addr + 2, "%x", &test_addr) != 1) {
+        printf("[ERROR] Invalid hexadecimal address: %s\n", addr);
+        return inst;
+    }
+
+    strncpy(inst.arg1, var, sizeof(inst.arg1) - 1);
+    inst.arg1[sizeof(inst.arg1) - 1] = '\0';
+    strncpy(inst.arg2, addr, sizeof(inst.arg2) - 1);
+    inst.arg2[sizeof(inst.arg2) - 1] = '\0';
     return inst;
 }
 // write
@@ -494,8 +777,41 @@ Process *generate_dummy_process(Config config) {
     p->for_depth = 0;  // *** FIX: Initialize for_depth ***
     p->ticks_ran_in_quantum = 0;  // *** FIX: Initialize quantum ticks ***
     p->last_exec_time = 0;  // *** FIX: Initialize to 0, will be set when scheduled ***
-    p->num_pages = memory_allocation / config.mem_per_frame;
+    if (config.mem_per_frame == 0) {
+        printf("[FATAL] Invalid frame size of 0 in process creation\n");
+        free(p);
+        return NULL;
+    }
+
+    p->num_pages = (memory_allocation + config.mem_per_frame - 1) / config.mem_per_frame;
+    printf("[DEBUG-INIT] Creating P%d with allocation=%d, frame_size=%llu, num_pages=%d\n",
+           p->pid, memory_allocation, config.mem_per_frame, p->num_pages);
+
+    if (p->num_pages == 0) {
+        printf("[ERROR] Process created with 0 pages (allocation=%d, frame_size=%llu)\n",
+               memory_allocation, config.mem_per_frame);
+        free(p);
+        return NULL;
+    }
+
     p->page_table = (PageTableEntry *)calloc(p->num_pages, sizeof(PageTableEntry));
+    if (!p->page_table) {
+        printf("[ERROR] Failed to allocate page table for P%d (%d pages)\n", 
+               p->pid, p->num_pages);
+        free(p->variables);
+        free(p->instructions);
+        free(p);
+        return NULL;
+    }
+
+    // Initialize all page table entries as invalid
+    for (uint32_t i = 0; i < p->num_pages; i++) {
+        p->page_table[i].valid = false;
+        p->page_table[i].frame_number = -1;
+    }
+
+    p->mem_base = 0;  // Initialize to 0, will be set properly when memory is allocated
+    p->mem_limit = memory_allocation;
 
     // *** FIX: Safer memory allocation with error checking ***
     p->variables = (Variable *)calloc(p->variables_capacity, sizeof(Variable));
@@ -524,7 +840,7 @@ Process *generate_dummy_process(Config config) {
 
     // Generate random instructions with bounds checking
     for (int i = 0; i < num_inst; i++) {
-        int t = rand() % 5; // 0=DECLARE, 1=ADD, 2=SUBTRACT, 3=PRINT, 4=SLEEP
+        int t = rand() % 6; // 0=DECLARE, 1=ADD, 2=SUBTRACT, 3=PRINT, 4=SLEEP, 5=READ
         char buf[64];
         
         // *** FIX: Ensure we don't access invalid indices ***
@@ -563,6 +879,46 @@ Process *generate_dummy_process(Config config) {
             case 4: // SLEEP
                 snprintf(buf, sizeof(buf), "%d", 1 + rand() % 10);
                 p->instructions[i] = parse_sleep(buf);
+                break;
+            case 5: // READ
+                // First few instructions should be DECLARE to ensure we have variables
+                if (i < 3) {
+                    snprintf(buf, sizeof(buf), "v%d,%d", i, rand() % 100);
+                    p->instructions[i] = parse_declare(buf);
+                } else {
+                    // First ensure we have a valid variable name
+                    char varname[16];
+                    snprintf(varname, sizeof(varname), "v%d", i);
+
+                    // Generate a safe virtual address within the process's memory space
+                    uint32_t max_pages = p->num_pages > 0 ? p->num_pages - 1 : 0;
+                    uint32_t page = rand() % (max_pages + 1);
+                    uint32_t max_offset = config.mem_per_frame - 2; // -2 to ensure word alignment
+                    uint32_t offset = (rand() % (max_offset / 2)) * 2; // Ensure word alignment
+                    
+                    // Virtual address is relative to process memory space
+                    uint32_t addr = (page * config.mem_per_frame) + offset;
+                    
+                    // Double-check all bounds
+                    if (addr >= p->memory_allocation || offset >= config.mem_per_frame) {
+                        // Fallback to DECLARE if address would be invalid
+                        snprintf(buf, sizeof(buf), "%s,%d", varname, rand() % 100);
+                        p->instructions[i] = parse_declare(buf);
+                    } else {
+                        // Format with exact spacing and ensure variable name is valid
+                        snprintf(buf, sizeof(buf), "%s, 0x%08x", varname, addr);
+                        Instruction read_inst = parse_read(buf);
+                        
+                        // Verify the instruction was parsed correctly
+                        if (read_inst.arg1[0] == '\0' || read_inst.arg2[0] == '\0') {
+                            // Fallback to DECLARE if READ parsing failed
+                            snprintf(buf, sizeof(buf), "%s,%d", varname, rand() % 100);
+                            p->instructions[i] = parse_declare(buf);
+                        } else {
+                            p->instructions[i] = read_inst;
+                        }
+                    }
+                }
                 break;
         }
     }
