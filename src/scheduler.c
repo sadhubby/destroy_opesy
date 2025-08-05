@@ -497,6 +497,9 @@ DWORD WINAPI core_loop(LPVOID lpParam) {
         // Extra validation of instruction data
         Instruction *inst = &p->instructions[p->program_counter];
         if (inst) {
+            // Add delay before executing instruction
+            busy_wait_ticks(config.delay_per_exec);
+            
             execute_instruction(p, config);
             p->ticks_ran_in_quantum++;
         }
