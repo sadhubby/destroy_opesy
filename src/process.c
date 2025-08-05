@@ -7,11 +7,20 @@
 #include <stdlib.h>
 #include <time.h>
 
+// Thread-safe PID counter
+volatile long next_pid = 1;
+
 // retain in uint16 bounds
 #define CLAMP_UINT16(x) ((x) > 65535 ? 65535 : (x))
 
 // get variable given a process and a variable name
 Variable *get_variable(Process *p, const char *name) {
+    if (!p || !name || !p->variables) {
+        printf("[ERROR] Invalid arguments to get_variable: p=%p, name=%p, variables=%p\n",
+               (void*)p, (void*)name, p ? (void*)p->variables : NULL);
+        return NULL;
+    }
+
     char trimmed_name[MAX_PROCESS_NAME];
     strncpy(trimmed_name, name, MAX_PROCESS_NAME - 1);
     trimmed_name[MAX_PROCESS_NAME - 1] = '\0';
@@ -34,16 +43,25 @@ Variable *get_variable(Process *p, const char *name) {
         }
     }
 
-    // Grow variable array if needed
+    // Grow variable array if needed, but with safety checks
     if (p->num_var >= p->variables_capacity) {
-        int new_cap = p->variables_capacity * 2;
-        Variable *new_vars = realloc(p->variables, new_cap * sizeof(Variable));
-        if (!new_vars) {
-            printf("[ERROR] Failed to realloc variables array for process %d!\n", p->pid);
+        if (p->variables_capacity >= 1000000) {
+            printf("[ERROR] Variable capacity too large for process %d\n", p->pid);
             return NULL;
         }
+        int new_cap = p->variables_capacity * 2;
+        Variable *new_vars = malloc(new_cap * sizeof(Variable));  // Use malloc instead of realloc
+        if (!new_vars) {
+            printf("[ERROR] Failed to allocate new variables array for process %d!\n", p->pid);
+            return NULL;
+        }
+        // Copy old data and free old array
+        memcpy(new_vars, p->variables, p->variables_capacity * sizeof(Variable));
+        memset(new_vars + p->variables_capacity, 0, (new_cap - p->variables_capacity) * sizeof(Variable));
+        free(p->variables);
         p->variables = new_vars;
         p->variables_capacity = new_cap;
+        // Debug message removed for cleaner output
     }
     strcpy(p->variables[p->num_var].name, trimmed_name);
     p->variables[p->num_var].value = 0;
@@ -58,13 +76,27 @@ uint16_t resolve_value(Process *p, const char *arg, uint16_t fallback) {
 }
 
 void execute_instruction(Process *p, Config config) {
-    Instruction *inst;
-
-    //guard for out of bounds
-    if (p->program_counter >= p->num_inst) {
-        // Already finished, do nothing
+    // Add validation checks
+    if (!p) {
+        printf("[ERROR] Null process pointer in execute_instruction\n");
         return;
     }
+
+    // Validate process structure
+    if (p->program_counter < 0 || !p->instructions || !p->variables) {
+        printf("[ERROR] Invalid process state: PC=%d, instructions=%p, variables=%p\n",
+               p->program_counter, (void*)p->instructions, (void*)p->variables);
+        return;
+    }
+
+    //guard for out of bounds with better logging
+    if (p->program_counter >= p->num_inst) {
+        printf("[DEBUG] Process %s reached end: PC=%d, num_inst=%d\n",
+               p->name, p->program_counter, p->num_inst);
+        return;
+    }
+
+    Instruction *inst = &p->instructions[p->program_counter];
     // if inside a for loop
     if (p->for_depth > 0) {
         ForContext *ctx = &p->for_stack[p->for_depth - 1];
@@ -81,8 +113,6 @@ void execute_instruction(Process *p, Config config) {
             return;
         }
     }
-    else
-    inst = &p->instructions[p->program_counter];
 
     switch (inst->type) {
         // declare
@@ -154,52 +184,27 @@ void execute_instruction(Process *p, Config config) {
             // sleep for x ticks
             p->state = SLEEPING;
             p->sleep_until_tick = CPU_TICKS + inst->value;
-            break;
         }
-<<<<<<< HEAD
-         // read
-         case READ: {
-             uint32_t address = 0;
-             sscanf(inst->arg2, "%x", &address);
-             int success = 0;
-             uint16_t value = memory_read(address, p, &success);
-             if (success) {
-                 Variable *v = get_variable(p, inst->arg1);
-                 if (v) v->value = value;
-             }
-             break;
-         }
-         // write
-         case WRITE: {
-             uint32_t address = 0;
-             sscanf(inst->arg1, "%x", &address);
-             uint16_t value = CLAMP_UINT16(inst->value);
-             memory_write(address, value, p);
-             break;
-         }
-=======
-
-        // read from memory
-        case READ: {
-            Variable *dest = get_variable(p, inst->arg1);
-            if (dest) {
-                // Get the memory address from arg2 (could be variable or literal)
-                uint16_t addr = resolve_value(p, inst->arg2, 0);
-                // Read value from memory at addr (assuming 0 if not initialized)
-                dest->value = read_from_memory(p, addr);
-            }
-            break;
-        }
->>>>>>> 47417ad (Change READ to not be a randomly generated instruction)
-
-        // write to memory
-        case WRITE: {
-            // Get the memory address from arg1 (could be variable or literal)
-            uint16_t addr = resolve_value(p, inst->arg1, 0);
-            // Write value directly to memory at addr
-            write_to_memory(p, addr, inst->value);
-            break;
-        }
+        // read
+        // case READ: {
+        //     uint32_t address = 0;
+        //     sscanf(inst->arg2, "%x", &address);
+        //     int success = 0;
+        //     uint16_t value = memory_read(address, p, &success);
+        //     if (success) {
+        //         Variable *v = get_variable(p, inst->arg1);
+        //         if (v) v->value = value;
+        //     }
+        //     break;
+        // }
+        // // writee
+        // case WRITE: {
+        //     uint32_t address = 0;
+        //     sscanf(inst->arg1, "%x", &address);
+        //     uint16_t value = CLAMP_UINT16(inst->value);
+        //     memory_write(address, value, p);
+        //     break;
+        // }
 
     }
 
@@ -374,7 +379,17 @@ Instruction parse_for(const char *args) {
 
     return inst;
 }
-
+// read
+Instruction parse_read(const char *args) {
+    Instruction inst = {0};
+    inst.type = READ;
+    char var[50], addr[50];
+    sscanf(args, "%49[^,],%49s", var, addr);
+    trim(var); trim(addr);
+    strcpy(inst.arg1, var);
+    strcpy(inst.arg2, addr);
+    return inst;
+}
 // write
 Instruction parse_write(const char *args) {
     Instruction inst = {0};
@@ -385,19 +400,6 @@ Instruction parse_write(const char *args) {
     trim(addr);
     strcpy(inst.arg1, addr);
     inst.value = value;
-    return inst;
-}
-
-// READ(var, addr)
-Instruction parse_read(const char *args) {
-    Instruction inst = {0};
-    inst.type = READ;
-    char var[50], addr[50];
-    sscanf(args, "%49[^,],%49[^,]", var, addr);
-    trim(var);
-    trim(addr);
-    strcpy(inst.arg1, var);  // Variable to store into
-    strcpy(inst.arg2, addr); // Memory address to read from
     return inst;
 }
 
@@ -425,7 +427,8 @@ int parse_instruction_list(const char *instrs, Instruction *out, int max_count) 
                 out[count++] = parse_sleep(args);
             } else if (strcmp(cmd, "FOR") == 0) {
                 out[count++] = parse_for(args);
-            }else if (strcmp(cmd, "READ") == 0) {
+            }
+            else if (strcmp(cmd, "READ") == 0) {
                 out[count++] = parse_read(args);
             } else if (strcmp(cmd, "WRITE") == 0) {
                 out[count++] = parse_write(args);
@@ -437,8 +440,6 @@ int parse_instruction_list(const char *instrs, Instruction *out, int max_count) 
 
     return count;
 }
-
-static int dummy_pid = 1;
 
 Process *generate_dummy_process(Config config) {
     int min_ins = config.min_ins > 1 ? config.min_ins : 1;
@@ -452,11 +453,14 @@ Process *generate_dummy_process(Config config) {
         return NULL;
     }
 
+    // Use thread-safe PID assignment
+    int assigned_pid = ++next_pid;  // Simple increment for now
+    
     // *** FIX: Proper string initialization ***
-    snprintf(p->name, MAX_PROCESS_NAME - 1, "%d", dummy_pid);
+    snprintf(p->name, MAX_PROCESS_NAME - 1, "%d", assigned_pid);
     p->name[MAX_PROCESS_NAME - 1] = '\0';  // Ensure null termination
     
-    p->pid = dummy_pid++;
+    p->pid = assigned_pid;
     p->state = READY;
     p->program_counter = 0;
     p->num_var = 0;

@@ -3,8 +3,8 @@
 #include <stdbool.h>
 #include "cli.h"
 #include "config.h"
-#include "screen.h"
 #include "scheduler.h"
+#include "screen.h"
 #include "process.h"
 #include "memory.h"
 #include "backing_store.h"

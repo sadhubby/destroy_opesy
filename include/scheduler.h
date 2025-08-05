@@ -21,9 +21,11 @@ extern int num_cores;
 // FIFO for processes
 extern ReadyQueue ready_queue;
 extern MemoryBlock **memory_blocks;
+extern volatile int scheduler_running;
 
 DWORD WINAPI scheduler_loop(LPVOID lpParam);
 void start_scheduler(Config config);
+void start_scheduler_without_processes(Config system_config);
 void stop_scheduler();
 void busy_wait_ticks(uint32_t delay_ticks);
 

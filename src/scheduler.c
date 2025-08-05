@@ -149,7 +149,7 @@ void schedule_fcfs() {
                         update_free_memory();
                     }
                 } else {
-                    printf("[ERROR] Process P%s has invalid instruction/variable arrays\n", next->name);
+                    printf("[ERROR] Process %s has invalid instruction/variable arrays\n", next->name);
                     // Don't schedule this process
                     if (next->instructions) free(next->instructions);
                     if (next->variables) free(next->variables);
@@ -307,7 +307,7 @@ void schedule_rr() {
                     }
                     next->ticks_ran_in_quantum = 0;
                 } else {
-                    printf("[ERROR] Process P%s has invalid instruction/variable arrays\n", next->name);
+                    printf("[ERROR] Process %s has invalid instruction/variable arrays\n", next->name);
                     // Don't schedule this process
                     if (next->instructions) free(next->instructions);
                     if (next->variables) free(next->variables);
@@ -466,7 +466,7 @@ DWORD WINAPI scheduler_loop(LPVOID lpParam) {
 
         // print_ready_queue();
 
-        if (CPU_TICKS % quantum == 0) {
+        if (quantum > 0 && CPU_TICKS % quantum == 0) {
             quantum_cycle++;
             // write_memory_snapshot(CPU_TICKS, memory_head);
         }
@@ -543,6 +543,20 @@ void start_scheduler(Config system_config) {
     processes_generating = 1;
     quantum = config.quantum_cycles;
     // init_memory(config.max_overall_mem, config.mem_per_frame, config.max_mem_per_proc, config.min_mem_per_proc);
+    init_stats();
+    memory_head = init_memory_block(config.max_overall_mem);
+    if (strcmp(config.scheduler, "rr") == 0)
+        schedule_type = 1;
+
+    scheduler_thread = CreateThread(NULL, 0, scheduler_loop, NULL, 0, NULL);
+    start_core_threads();
+}
+
+void start_scheduler_without_processes(Config system_config) {
+    config = system_config;
+    scheduler_running = 1;
+    processes_generating = 0;
+    quantum = config.quantum_cycles;
     init_stats();
     memory_head = init_memory_block(config.max_overall_mem);
     if (strcmp(config.scheduler, "rr") == 0)
