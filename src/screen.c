@@ -26,6 +26,22 @@ void screen_process_smi(Process *p) {
     printf("\nProcess name: %s\n", p->name);
     printf("ID: %d\n", p->pid);
     printf("Logs:\n");
+
+    // Print the execution logs
+    for (int i = 0; i < p->num_logs; i++) {
+        if (p->logs[i].message[0] != '\0') {  // Only print non-empty logs
+            printf("[");
+            print_timestamp(p->logs[i].timestamp);
+            printf("] Core %d: %s\n", 
+                  p->logs[i].core_id,
+                  p->logs[i].message);
+        }
+    }
+
+    // If process is finished, show the Finished! message
+    if (p->state == FINISHED) {
+        printf("\nFinished!\n");
+    }
 }
 
 // screen -s
@@ -52,21 +68,60 @@ void screen_start(const char *name, int memory_size) {
         printColor(yellow, "Failed to allocate memory for new process.\n");
         return;
     }
+
+    // Initialize process with zeroes
+    memset(p, 0, sizeof(Process));
+    
+    // Set basic process info
     strncpy(p->name, name, sizeof(p->name) - 1);
     p->name[sizeof(p->name) - 1] = '\0';
     p->pid = process_count + 1;
     p->program_counter = 0;
     p->num_inst = rand() % 1000 + 200; // Randomized instruction length, or from config
     p->last_exec_time = time(NULL);
-    // Initialize logs, etc.
+    p->state = READY;
+    p->is_in_screen = true;
+
+    // Initialize logs array
+    p->logs = malloc(sizeof(Log) * 100);  // Support up to 100 logs
+    if (!p->logs) {
+        printColor(yellow, "Failed to allocate memory for process logs.\n");
+        free(p);
+        return;
+    }
+    p->num_logs = 0;
+
+    // Generate some dummy instructions including PRINT
+    p->instructions = malloc(sizeof(Instruction) * p->num_inst);
+    if (!p->instructions) {
+        printColor(yellow, "Failed to allocate memory for instructions.\n");
+        free(p->logs);
+        free(p);
+        return;
+    }
+
+    // Add some PRINT instructions in the mix
+    for (int i = 0; i < p->num_inst; i++) {
+        if (rand() % 5 == 0) {  // 20% chance of PRINT instruction
+            p->instructions[i].type = PRINT;
+            snprintf(p->instructions[i].arg1, sizeof(p->instructions[i].arg1),
+                    "Hello from instruction %d", i);
+        }
+    }
 
     add_process(p);
 
-    // // print new process
+    // Clear console
+    #ifdef _WIN32
+        system("cls");
+    #else
+        system("clear");
+    #endif
+
     printf("Attached to new screen: %s (PID: %d)\n", p->name, p->pid);
     printf("Type 'exit' to return to main menu.\n");
+    printf("Type 'process-smi' to view process information and logs.\n\n");
 
-    // // accept inputs
     char input[64];
     while (1) {
         printf("[%s] Enter command: ", p->name);
@@ -74,12 +129,19 @@ void screen_start(const char *name, int memory_size) {
         input[strcspn(input, "\n")] = '\0';
 
         if (strcmp(input, "exit") == 0) {
-        printf("Returning to main menu.\n");
+            printf("Returning to main menu.\n");
             return;
         } else if (strcmp(input, "process-smi") == 0) {
             screen_process_smi(p);
+        } else if (strcmp(input, "clear") == 0) {
+            // Allow clearing the screen
+            #ifdef _WIN32
+                system("cls");
+            #else
+                system("clear");
+            #endif
         } else {
-            printColor(yellow, "Invalid screen command format.\n");
+            printColor(yellow, "Invalid command. Available commands: process-smi, clear, exit\n");
         }
     }
 }
