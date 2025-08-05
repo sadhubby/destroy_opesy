@@ -181,6 +181,7 @@ void free_process_memory(Process *p, MemoryBlock **head_ref) {
         if (curr->occupied && curr->pid == p->pid) {
             curr->occupied = false;
             curr->pid = -1;
+            p->in_memory = 0;
             break;
         }
         curr = curr->next;
@@ -204,36 +205,47 @@ MemoryBlock* init_memory_block(uint64_t total_memory) {
     return head;
 }
 
-void update_used_free_memory() {
-    // Allocate dynamic arrays for storing process info
-    int *temp_pids = malloc(sizeof(int) * num_processes);
-    uint64_t *temp_allocs = malloc(sizeof(uint64_t) * num_processes);
-    if (!temp_pids || !temp_allocs) {
-        fprintf(stderr, "Memory allocation failed\n");
-        free(temp_pids);
-        free(temp_allocs);
-        return;
-    }
+// void update_used_free_memory() {
+//     // Allocate dynamic arrays for storing process info
+//     int *temp_pids = malloc(sizeof(int) * num_processes);
+//     uint64_t *temp_allocs = malloc(sizeof(uint64_t) * num_processes);
+//     if (!temp_pids || !temp_allocs) {
+//         fprintf(stderr, "Memory allocation failed\n");
+//         free(temp_pids);
+//         free(temp_allocs);
+//         return;
+//     }
 
-    int temp_count = 0;
+//     int temp_count = 0;
+//     uint64_t used_memory = 0;
+
+//     // Collect memory allocations of active processes
+//     for (int i = 0; i < num_processes; i++) {
+//         Process *p = process_table[i];
+//         if (p && (p->state == RUNNING || p->state == SLEEPING)) {
+//             temp_pids[temp_count] = p->pid;
+//             temp_allocs[temp_count] = p->memory_allocation;
+//             used_memory += p->memory_allocation;
+//             temp_count++;
+//         }
+//     }
+
+//     memory.used_memory = used_memory;
+//     memory.free_memory = memory.total_memory - used_memory;
+
+// }
+void update_used_free_memory() {
     uint64_t used_memory = 0;
 
-    // Collect memory allocations of active processes
-
-    for (int i = 0; i < num_cores; i++) {
-        Process *p = cpu_cores[i];
-        if (p) {
-            temp_pids[temp_count] = p->pid;
-            temp_allocs[temp_count] = p->memory_allocation;
-            used_memory += p->memory_allocation;
-            temp_count++;
+    // Calculate used memory from actual memory blocks, not process table
+    MemoryBlock* curr = memory_head;
+    while (curr) {
+        if (curr->occupied) {
+            used_memory += (curr->end - curr->base + 1);
         }
+        curr = curr->next;
     }
-
-    // Ensure used memory doesn't exceed total memory
-    if (used_memory > memory.total_memory) {
-        used_memory = memory.total_memory;
-    }
+    
     memory.used_memory = used_memory;
     memory.free_memory = memory.total_memory - used_memory;
 }
