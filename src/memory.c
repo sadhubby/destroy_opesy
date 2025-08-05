@@ -99,6 +99,7 @@ int handle_page_fault(Process *p, uint32_t virtual_address) {
             // Zero the frame contents first
             memset(&memory_space[frame_start], 0, memory.mem_per_frame);
             
+            // Increment page in stat only after successful page load
             stats.num_paged_in++;
             LeaveCriticalSection(&backing_store_cs);
             return 1;
@@ -166,6 +167,7 @@ int handle_page_fault(Process *p, uint32_t virtual_address) {
         write_process_to_backing_store(victim_process);
         
         free(page_buffer);
+        // Increment page out stat only after successful page write to backing store
         stats.num_paged_out++;
         
         printf("[Page Out] Successfully saved page %d of process %d to backing store\n",
@@ -286,7 +288,7 @@ void free_process_memory(Process *p, MemoryBlock **head_ref) {
 
     // Recalculate memory stats
     update_free_memory();
-    stats.num_paged_out++;
+    // Don't increment num_paged_out here - it should only be incremented during actual page outs
 }
 
 MemoryBlock* init_memory_block(uint64_t total_memory) {
